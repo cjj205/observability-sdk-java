@@ -47,7 +47,7 @@ class AgentCoverageTest {
         }
     }
 
-    @Test void rejectsInvalidAgentStateAndTokenAttributes() {
+    @Test void rejectsCrossSignalAndInvalidTypeAttributes() {
         var spans = InMemorySpanExporter.create();
         var metrics = InMemoryMetricReader.create();
         var logs = InMemoryLogRecordExporter.create();
@@ -56,8 +56,8 @@ class AgentCoverageTest {
             .setLoggerProvider(SdkLoggerProvider.builder().addLogRecordProcessor(SimpleLogRecordProcessor.create(logs)).build())
             .setMeterProvider(SdkMeterProvider.builder().registerMetricReader(metrics).build()).build()) {
             var observe = new Observability(sdk);
-            observe.trace("a2at.substep.work", SignalKind.INTERNAL, Map.of("gen_ai.agent.name", "a", "substep.name", "work", "substep.status", "unknown")).end();
-            observe.metric("gen_ai.client.token.usage", 1, Map.of("gen_ai.agent.name", "a", "gen_ai.request.model", "m", "gen_ai.token.type", "both"));
+            observe.trace("a2at.substep.work", SignalKind.INTERNAL, Map.of("gen_ai.agent.name", "a", "substep.name", "work", "substep.status", "custom", "workflow.id", "wf-1")).end();
+            observe.metric("gen_ai.client.token.usage", 1, Map.of("gen_ai.agent.name", "a", "gen_ai.request.model", "m", "gen_ai.token.type", 1));
             observe.log("gen_ai.agent.a2at.agent", LogSeverity.INFO, "invalid", Map.of("gen_ai.agent.name", "a", "agent.state", "running", "workflow.id", "wf-1"));
             assertTrue(spans.getFinishedSpanItems().isEmpty());
             assertTrue(metrics.collectAllMetrics().isEmpty());

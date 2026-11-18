@@ -113,6 +113,18 @@ class ObservabilityTest {
         assertEquals("x", AttributesConverter.convert(Map.of("task.object", "x"), 'M', Set.of("task.object"))
             .get(AttributeKey.stringKey(Definitions.PREFIX + "task.object")));
     }
+    @Test void acceptsCustomValuesForNonExtensionAttributes() {
+        var metrics = AttributesConverter.convert(Map.of(
+            "negotiation.result", "counter-offer", "workflow.status", "paused",
+            "agent.state", "draining", "gen_ai.token.type", "cached"), 'M', null);
+        var logs = AttributesConverter.convert(Map.of("authorization.stage", "manual-review", "substep.status", "waiting"), 'L', null);
+        assertEquals("counter-offer", metrics.get(AttributeKey.stringKey(Definitions.PREFIX + "negotiation.result")));
+        assertEquals("paused", metrics.get(AttributeKey.stringKey(Definitions.PREFIX + "workflow.status")));
+        assertEquals("draining", metrics.get(AttributeKey.stringKey(Definitions.PREFIX + "agent.state")));
+        assertEquals("cached", metrics.get(AttributeKey.stringKey("gen_ai.token.type")));
+        assertEquals("manual-review", logs.get(AttributeKey.stringKey(Definitions.PREFIX + "authorization.stage")));
+        assertEquals("waiting", logs.get(AttributeKey.stringKey(Definitions.PREFIX + "substep.status")));
+    }
     @Test void explicitAndCurrentContextCreateParentChild() {
         ObservationSpan parent = observe.trace("message/send", SignalKind.SERVER, task());
         ObservationSpan child = observe.trace("message/send", SignalKind.CLIENT, task(), parent);

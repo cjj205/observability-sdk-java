@@ -164,7 +164,7 @@ mvn -B -ntp -Pexamples test-compile exec:java '-Dexec.classpathScope=test' '-Dex
 | `notification-t` | `notification.topic`、`push.notification.url` | — |
 | `authorization-t` | `authorization.stage`、`authorization.policy.operation.type` | — |
 
-轮次属性传整数，其余属性传字符串。枚举输入忽略大小写，输出为小写。`negotiation.result` 取 `accept`、`reject`、`timeout`，`negotiation.performative` 取 `propose`、`reject`、`accept`，`authorization.stage` 取 `preauthorize`、`execute`。
+轮次属性传整数，其余属性传字符串。除 `extension.name` 外，SDK 不限制属性字符串取值，也不对其进行大小写转换。
 
 ### A2A-T Metric
 
@@ -197,7 +197,7 @@ Workflow 信号由 `src/main/resources/observability/workflow.yaml` 加载，当
 | Log | `gen_ai.agent.a2at.workflow` | `workflow.id`、`workflow.type`、`workflow.status`、`workflow.session_id`、`business.domain`、`business.customer` | `workflow.id`、`workflow.type`、`workflow.status` |
 | Log | `gen_ai.agent.a2at.step` | `workflow.step`、`workflow.step.index`、`workflow.step.status`、`workflow.step.owner_agent` | `workflow.step`、`workflow.step.index`、`workflow.step.status` |
 
-`workflow.status` 取 `running`、`completed` 或 `failed`；`workflow.step.status` 取 `active`、`failed` 或 `done`；`workflow.step.index` 传整数。示例：
+`workflow.step.index` 传整数。`workflow.status`、`workflow.step.status` 保留接入方给出的字符串值。示例：
 
 ```java
 var workflow = Map.of(
@@ -228,7 +228,7 @@ Agent 信号由 `src/main/resources/observability/agent.yaml` 加载，当前版
 | Log | `gen_ai.agent.a2at.agent` | `gen_ai.agent.name`、`agent.role`、`agent.skills`、`agent.state` | `gen_ai.agent.name`、`agent.state` |
 | Log | `gen_ai.agent.a2at.substep` | `gen_ai.agent.name`、`substep.name`、`substep.status`、`workflow.step`、`workflow.step.index` | `gen_ai.agent.name`、`substep.name`、`substep.status` |
 
-`agent.state` 取 `idle`、`running`、`success` 或 `failed`；`substep.status` 取 `active`、`failed` 或 `done`；`gen_ai.token.type` 取 `input` 或 `output`。生命周期 Log 当前采用 `gen_ai.agent.a2at.agent`。如果接入端已使用 `gen_ai.agent.a2at.agent.lcm`，需在统一命名确认后增加兼容别名。
+`agent.state`、`substep.status`、`gen_ai.token.type` 保留接入方给出的字符串值。生命周期 Log 当前采用 `gen_ai.agent.a2at.agent`。如果接入端已使用 `gen_ai.agent.a2at.agent.lcm`，需在统一命名确认后增加兼容别名。
 
 ```java
 var substep = Map.of(

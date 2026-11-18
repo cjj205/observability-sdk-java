@@ -53,13 +53,13 @@ class ExtensionCoverageTest {
             Attributes n = spans.getFinishedSpanItems().get(1).getAttributes();
             assertEquals("negotiation-t", n.get(str("extension.name"))); assertEquals("n1", n.get(str("negotiation.id")));
             assertEquals(2L, n.get(lng("negotiation.round"))); assertEquals(3L, n.get(lng("negotiation.total_rounds")));
-            assertEquals("accept", n.get(str("negotiation.result"))); assertEquals("propose", n.get(str("negotiation.performative")));
+            assertEquals("ACCEPT", n.get(str("negotiation.result"))); assertEquals("PROPOSE", n.get(str("negotiation.performative")));
             assertEquals(4L, logs.getFinishedLogRecordItems().get(1).getAttributes().get(lng("negotiation.max_rounds")));
             Attributes notification = spans.getFinishedSpanItems().get(2).getAttributes();
             assertEquals("topic", notification.get(str("notification.topic"))); assertEquals("https://example.com/path", notification.get(str("push.notification.url")));
             assertEquals("https://example.com/path", logs.getFinishedLogRecordItems().get(2).getAttributes().get(str("push.notification.url")));
             Attributes auth = spans.getFinishedSpanItems().get(3).getAttributes();
-            assertEquals("execute", auth.get(str("authorization.stage"))); assertEquals("create", auth.get(str("authorization.policy.operation.type")));
+            assertEquals("EXECUTE", auth.get(str("authorization.stage"))); assertEquals("create", auth.get(str("authorization.policy.operation.type")));
             for (int i = 0; i < 4; i++) {
                 var sa = spans.getFinishedSpanItems().get(i).getAttributes(); var la = logs.getFinishedLogRecordItems().get(i).getAttributes();
                 sa.forEach((k, v) -> assertEquals(v, la.asMap().get(k)));
@@ -75,7 +75,6 @@ class ExtensionCoverageTest {
             o.trace("message/send", SignalKind.CLIENT, Map.of("extension.name", "negotiation-t", "task.type", "x")).end();
             o.trace("message/send", SignalKind.CLIENT, Map.of("extension.name", "negotiation-t", "negotiation.max_rounds", 2)).end();
             o.trace("message/send", SignalKind.CLIENT, Map.of("extension.name", "negotiation-t", "negotiation.round", "2")).end();
-            o.log("gen_ai.agent.a2at.message", LogSeverity.INFO, "body", Map.of("extension.name", "negotiation-t", "negotiation.result", "wrong"));
             o.log("gen_ai.agent.a2at.message", LogSeverity.INFO, "body", Map.of("extension.name", "notification-t", "authorization.stage", "execute"));
             assertTrue(spans.getFinishedSpanItems().isEmpty()); assertTrue(logs.getFinishedLogRecordItems().isEmpty());
             var span = o.trace("message/send", SignalKind.SERVER, NEG);
