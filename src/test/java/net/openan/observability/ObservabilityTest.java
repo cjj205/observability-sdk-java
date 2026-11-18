@@ -65,6 +65,17 @@ class ObservabilityTest {
         assertEquals(1, points.size());
         assertEquals("incident", points.iterator().next().getAttributes().get(AttributeKey.stringKey(Definitions.PREFIX + "task.object")));
     }
+    @Test void yamlDefinesAttributeTypesNamesAndExtensionValues() {
+        var extension = Definitions.attribute("extension.name");
+        assertEquals("gen_ai.agent.a2at.extension.name", extension.name());
+        assertEquals(Definitions.AttributeType.STRING, extension.type());
+        assertEquals(Set.of("task-t", "negotiation-t", "notification-t", "authorization-t"), extension.values());
+        var stepIndex = Definitions.attribute("workflow.step.index");
+        assertEquals(Definitions.AttributeType.INTEGER, stepIndex.type());
+        assertEquals("gen_ai.agent.a2at.workflow.step.index", stepIndex.name());
+        assertEquals(Definitions.AttributeType.STRING_ARRAY, Definitions.attribute("agent.skills").type());
+        assertTrue(Definitions.attribute("workflow.status").values().isEmpty());
+    }
     @Test void allConfiguredMetricsUseSpecifiedTypesUnitsAndDimensions() {
         Definitions.METRICS.forEach((name, definition) -> {
             Map<String, Object> attrs = new HashMap<>();
@@ -189,5 +200,9 @@ class ObservabilityTest {
         var point = metric("task.duration").getHistogramData().getPoints().iterator().next();
         assertEquals(2, point.getCount()); assertEquals(6, point.getSum());
     }
-    private MetricData metric(String name) { return metrics.collectAllMetrics().stream().filter(m -> m.getName().equals(Definitions.metricName(name))).findFirst().orElseThrow(); }
+    private MetricData metric(String name) {
+        return metrics.collectAllMetrics().stream()
+            .filter(metric -> metric.getName().equals(Definitions.METRICS.get(Definitions.shortName(name)).name()))
+            .findFirst().orElseThrow();
+    }
 }

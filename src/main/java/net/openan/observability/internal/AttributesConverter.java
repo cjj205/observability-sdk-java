@@ -36,16 +36,16 @@ public final class AttributesConverter {
             String rawKey = item.getKey();
             String key = rawKey.startsWith(Definitions.A2A_PREFIX)
                 ? rawKey.substring(Definitions.A2A_PREFIX.length()) : Definitions.shortName(rawKey);
-            Definitions.Attribute definition = Definitions.ATTRIBUTES.get(key);
+            Definitions.Attribute definition = Definitions.attribute(key);
             if (definition == null || (!rawKey.equals(key) && !rawKey.equals(definition.name()))
                 || !seen.add(key) || definition.signals().indexOf(signal) < 0 || (dimensions != null && !dimensions.contains(key))) throw new IllegalArgumentException();
             Object value = item.getValue();
-            if (definition.integer()) {
+            if (definition.type() == Definitions.AttributeType.INTEGER) {
                 if (!(value instanceof Byte || value instanceof Short || value instanceof Integer || value instanceof Long)) throw new IllegalArgumentException();
                 long number = ((Number) value).longValue();
                 if (key.equals("parts.number") && number < 0) throw new IllegalArgumentException();
                 output.put(definition.name(), number);
-            } else if (definition.stringArray()) {
+            } else if (definition.type() == Definitions.AttributeType.STRING_ARRAY) {
                 if (!(value instanceof java.util.List<?> values) || values.isEmpty()) throw new IllegalArgumentException();
                 java.util.List<String> cleaned = new java.util.ArrayList<>();
                 for (Object valueItem : values) {

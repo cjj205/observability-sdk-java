@@ -1,7 +1,21 @@
 version: 1.0.0
 signal: workflow
+
+attributes:
+  workflow.id: {otel_name: gen_ai.agent.a2at.workflow.id, type: string}
+  workflow.type: {otel_name: gen_ai.agent.a2at.workflow.type, type: string}
+  workflow.status: {otel_name: gen_ai.agent.a2at.workflow.status, type: string}
+  workflow.session_id: {otel_name: gen_ai.agent.a2at.workflow.session_id, type: string}
+  workflow.step: {otel_name: gen_ai.agent.a2at.workflow.step, type: string}
+  workflow.step.index: {otel_name: gen_ai.agent.a2at.workflow.step.index, type: integer}
+  workflow.step.status: {otel_name: gen_ai.agent.a2at.workflow.step.status, type: string}
+  workflow.step.owner_agent: {otel_name: gen_ai.agent.a2at.workflow.step.owner_agent, type: string}
+  gen_ai.agent.name: {otel_name: gen_ai.agent.name, type: string}
+  business.domain: {otel_name: gen_ai.agent.a2at.business.domain, type: string}
+  business.customer: {otel_name: gen_ai.agent.a2at.business.customer, type: string}
 metrics:
   workflow.duration:
+    otel_name: gen_ai.agent.a2at.workflow.duration
     type: histogram
     value_type: number
     unit: ms
@@ -9,6 +23,7 @@ metrics:
       allowed: [workflow.type, workflow.status]
       required: [workflow.type, workflow.status]
   workflow.count:
+    otel_name: gen_ai.agent.a2at.workflow.count
     type: counter
     value_type: integer
     unit: ''
@@ -16,6 +31,7 @@ metrics:
       allowed: [workflow.type, workflow.status]
       required: [workflow.type, workflow.status]
   step.duration:
+    otel_name: gen_ai.agent.a2at.step.duration
     type: histogram
     value_type: number
     unit: ms

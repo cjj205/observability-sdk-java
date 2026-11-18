@@ -16,7 +16,7 @@ A2A / A2A-T 采集方 → Observability Core → OpenTelemetry SDK → OTLP → 
 
 | 能力 | 当前实现 |
 |---|---|
-| 信号校验 | 按信号和扩展类型检查名称、允许字段、必填项和取值。非法输入在写入 OpenTelemetry 前被拒绝。 |
+| 信号校验 | 按信号和扩展类型检查名称、允许字段、必填项和数据类型；`extension.name` 取值决定二级属性白名单。非法输入在写入 OpenTelemetry 前被拒绝。 |
 | OTel 转换 | A2A 支持 12 种 Span 和 2 项 Metric。A2A-T 支持四种扩展的 13 项协议属性、消息 Log 和 8 项 Metric。Workflow 支持 2 个 Trace、2 个 Log 和 3 项 Metric；Agent 支持子步骤 Trace、2 项 Metric 和 2 个 Log。 |
 | 统一上报 | Trace、Metric、Log 共用一套 Collector 地址、OTLP 协议和服务名。SDK 统一管理三个 Exporter 的初始化、刷新和关闭。 |
 
@@ -25,7 +25,7 @@ A2A / A2A-T 采集方 → Observability Core → OpenTelemetry SDK → OTLP → 
 | 位置 | 内容 |
 |---|---|
 | [`src/main/java/net/openan/observability/`](src/main/java/net/openan/observability/) | Java 接口和 OTel 导出配置 |
-| [`src/main/resources/observability/`](src/main/resources/observability/) | 版本化信号配置：`a2at.yaml`、`agent.yaml`、`workflow.yaml`；指标、扩展属性及 Workflow 信号规则由 YAML 加载 |
+| [`src/main/resources/observability/`](src/main/resources/observability/) | 版本化信号配置：`a2at.yaml`、`agent.yaml`、`workflow.yaml`；信号、指标、属性名、属性类型、白名单及 `extension.name` 分支规则均由 YAML 加载 |
 | [`internal/`](src/main/java/net/openan/observability/internal/) | 内部字段定义、校验与转换，不作为稳定公开 API |
 | [`examples/`](examples/) | `TaskTExample` 演示任务场景，`ExtensionsExample` 验证四种扩展，`A2AExample` 演示 A2A Span 和 Metric |
 | [`consumer-smoke/`](consumer-smoke/) | 单独的 Maven 应用，通过依赖引入 SDK 并验证生命周期与打点 |
@@ -138,7 +138,7 @@ endpoint 的 `https` scheme 启用 TLS，`http` 使用明文。`trustedCertifica
 | `tasks/get`、`tasks/cancel`、`tasks/list`、`tasks/resubscribe` | `CLIENT` / `SERVER` |
 | `tasks/pushNotificationConfig/set`、`tasks/pushNotificationConfig/get`、`tasks/pushNotificationConfig/list`、`tasks/pushNotificationConfig/delete` | `CLIENT` / `SERVER` |
 
-Span 可接收 `operation.name`、`task_id`、`context_id`、`message_id`、`Role`、`Extensions`、`parts.number`、`config_id`、`Request`、`Response`、`error.type`。`streaming-event` 仅用于 `message/stream-event`。创建 `message/stream-event` 时，可把流式调用的 Span 作为第四个参数传入，SDK 将其记录为 OTel Span Link。`Role` 取 `user` 或 `agent`，`parts.number` 传非负整数。`Request`、`Response` 和 `streaming-event` 由采集方传入经过脱敏、允许上报的内容。
+Span 可接收 `operation.name`、`task_id`、`context_id`、`message_id`、`Role`、`Extensions`、`parts.number`、`config_id`、`Request`、`Response`、`error.type`。`streaming-event` 仅用于 `message/stream-event`。创建 `message/stream-event` 时，可把流式调用的 Span 作为第四个参数传入，SDK 将其记录为 OTel Span Link。`parts.number` 传非负整数；字符串属性保留接入方传入的值。`Request`、`Response` 和 `streaming-event` 由采集方传入经过脱敏、允许上报的内容。
 
 A2A 自定义属性可用短名或 `gen_ai.agent.a2a.` 全名。`error.type` 和 `gen_ai.system` 使用原名。Span 名按表中原样导出。
 
@@ -169,6 +169,8 @@ mvn -B -ntp -Pexamples test-compile exec:java '-Dexec.classpathScope=test' '-Dex
 ### A2A-T Metric
 
 指标定义由 `src/main/resources/observability/a2at.yaml` 加载，当前版本为 `1.0.0`。SDK 先校验指标名称，再按该指标的 `attributes.allowed` 校验属性白名单，并检查 `attributes.required`。例如 `task.duration` 和 `task.count` 允许 `task.type`、`task.object`，其中 `task.type` 必填。
+
+三份 YAML 的顶层 `attributes` 统一定义属性的导出名和类型：`otel_name` 是写入 OpenTelemetry 的键，`type` 可为 `string`、`integer` 或 `string_array`。只有 `extension.name` 可以声明 `values`，用于选择 Task-T、Negotiation-T、Notification-T、Authorization-T 对应的二级白名单；其余属性只校验名称、所属信号的允许范围、必填性和数据类型，不限制字符串取值。
 
 | 指标 ID | 类型 | 单位 | 允许的维度 |
 |---|---|---|---|

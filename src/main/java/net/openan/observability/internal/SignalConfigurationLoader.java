@@ -19,14 +19,15 @@ final class SignalConfigurationLoader {
         Map<String, Definitions.Signal> logs = new LinkedHashMap<>();
         Map<String, Definitions.NamedSignal> traces = new LinkedHashMap<>();
         Map<String, Definitions.NamedSignal> namedLogs = new LinkedHashMap<>();
+        Map<String, Definitions.Attribute> attributes = new LinkedHashMap<>();
         Map<String, String> versions = new LinkedHashMap<>();
-        for (String resource : RESOURCES) load(resource, metrics, spans, logs, traces, namedLogs, versions);
-        return new Catalog(Map.copyOf(metrics), Map.copyOf(spans), Map.copyOf(logs), Map.copyOf(traces), Map.copyOf(namedLogs), Map.copyOf(versions));
+        for (String resource : RESOURCES) load(resource, metrics, spans, logs, traces, namedLogs, attributes, versions);
+        return new Catalog(Map.copyOf(metrics), Map.copyOf(spans), Map.copyOf(logs), Map.copyOf(traces), Map.copyOf(namedLogs), Map.copyOf(attributes), Map.copyOf(versions));
     }
 
     private static void load(String resource, Map<String, Definitions.Metric> metrics, Map<String, Definitions.Signal> spans,
         Map<String, Definitions.Signal> logs, Map<String, Definitions.NamedSignal> traces, Map<String, Definitions.NamedSignal> namedLogs,
-        Map<String, String> versions) {
+        Map<String, Definitions.Attribute> attributes, Map<String, String> versions) {
         try (InputStream stream = SignalConfigurationLoader.class.getClassLoader().getResourceAsStream(resource)) {
             if (stream == null) throw new IllegalStateException("Missing signal configuration: " + resource);
             LoaderOptions options = new LoaderOptions();
@@ -36,13 +37,14 @@ final class SignalConfigurationLoader {
             String signal = string(root.get("signal"), resource + ".signal");
             String version = string(root.get("version"), resource + ".version");
             if (versions.putIfAbsent(signal, version) != null) throw new IllegalStateException("Duplicate signal configuration: " + signal);
+            loadAttributes(root.get("attributes"), resource + ".attributes", attributes);
             for (Map.Entry<String, Object> entry : map(root.get("metrics"), resource + ".metrics").entrySet()) {
                 Map<String, Object> item = map(entry.getValue(), resource + ".metrics." + entry.getKey());
-                Map<String, Object> attributes = map(item.get("attributes"), resource + ".metrics." + entry.getKey() + ".attributes");
+                Map<String, Object> metricAttributes = map(item.get("attributes"), resource + ".metrics." + entry.getKey() + ".attributes");
                 boolean histogram = string(item.get("type"), entry.getKey() + ".type").equals("histogram");
                 boolean integer = string(item.get("value_type"), entry.getKey() + ".value_type").equals("integer");
-                Definitions.Metric metric = new Definitions.Metric(histogram, integer, text(item.get("unit"), entry.getKey() + ".unit"),
-                    strings(attributes.get("allowed"), entry.getKey() + ".attributes.allowed"), strings(attributes.get("required"), entry.getKey() + ".attributes.required"));
+                Definitions.Metric metric = new Definitions.Metric(string(item.get("otel_name"), entry.getKey() + ".otel_name"), histogram, integer, text(item.get("unit"), entry.getKey() + ".unit"),
+                    strings(metricAttributes.get("allowed"), entry.getKey() + ".attributes.allowed"), strings(metricAttributes.get("required"), entry.getKey() + ".attributes.required"));
                 if (metrics.putIfAbsent(entry.getKey(), metric) != null) throw new IllegalStateException("Duplicate metric: " + entry.getKey());
             }
             for (Map.Entry<String, Object> entry : map(root.get("extensions"), resource + ".extensions").entrySet()) {
@@ -57,6 +59,21 @@ final class SignalConfigurationLoader {
             throw e;
         } catch (Exception e) {
             throw new IllegalStateException("Invalid signal configuration: " + resource, e);
+        }
+    }
+    private static void loadAttributes(Object value, String path, Map<String, Definitions.Attribute> target) {
+        for (Map.Entry<String, Object> entry : map(value, path).entrySet()) {
+            String key = entry.getKey();
+            Map<String, Object> item = map(entry.getValue(), path + "." + key);
+            String type = string(item.get("type"), path + "." + key + ".type");
+            Definitions.AttributeType attributeType;
+            try { attributeType = Definitions.AttributeType.valueOf(type.toUpperCase(java.util.Locale.ROOT)); }
+            catch (IllegalArgumentException e) { throw new IllegalStateException("Unsupported attribute type at " + path + "." + key + ".type"); }
+            Set<String> values = item.containsKey("values") ? strings(item.get("values"), path + "." + key + ".values") : Set.of();
+            if (!values.isEmpty() && !key.equals("extension.name")) throw new IllegalStateException("Only extension.name may declare values at " + path + "." + key);
+            Definitions.Attribute attribute = new Definitions.Attribute(string(item.get("otel_name"), path + "." + key + ".otel_name"), "SML", attributeType, values);
+            Definitions.Attribute existing = target.putIfAbsent(key, attribute);
+            if (existing != null && !existing.equals(attribute)) throw new IllegalStateException("Conflicting attribute definition: " + key);
         }
     }
 
@@ -107,6 +124,7 @@ final class SignalConfigurationLoader {
 
     record Catalog(Map<String, Definitions.Metric> metrics, Map<String, Definitions.Signal> spans,
         Map<String, Definitions.Signal> logs, Map<String, Definitions.NamedSignal> traces,
-        Map<String, Definitions.NamedSignal> namedLogs, Map<String, String> versions) {}
+        Map<String, Definitions.NamedSignal> namedLogs, Map<String, Definitions.Attribute> attributes,
+        Map<String, String> versions) {}
     private SignalConfigurationLoader() {}
 }

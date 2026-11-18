@@ -1,8 +1,24 @@
 version: 1.0.0
 signal: a2at
 
+attributes:
+  extension.name: {otel_name: gen_ai.agent.a2at.extension.name, type: string, values: [task-t, negotiation-t, notification-t, authorization-t]}
+  task.type: {otel_name: gen_ai.agent.a2at.task.type, type: string}
+  task.object: {otel_name: gen_ai.agent.a2at.task.object, type: string}
+  negotiation.id: {otel_name: gen_ai.agent.a2at.negotiation.id, type: string}
+  negotiation.round: {otel_name: gen_ai.agent.a2at.negotiation.round, type: integer}
+  negotiation.total_rounds: {otel_name: gen_ai.agent.a2at.negotiation.total_rounds, type: integer}
+  negotiation.max_rounds: {otel_name: gen_ai.agent.a2at.negotiation.max_rounds, type: integer}
+  negotiation.result: {otel_name: gen_ai.agent.a2at.negotiation.result, type: string}
+  negotiation.performative: {otel_name: gen_ai.agent.a2at.negotiation.performative, type: string}
+  notification.topic: {otel_name: gen_ai.agent.a2at.notification.topic, type: string}
+  push.notification.url: {otel_name: gen_ai.agent.a2at.push.notification.url, type: string}
+  authorization.stage: {otel_name: gen_ai.agent.a2at.authorization.stage, type: string}
+  authorization.policy.operation.type: {otel_name: gen_ai.agent.a2at.authorization.policy.operation.type, type: string}
+
 metrics:
   task.duration:
+    otel_name: gen_ai.agent.a2at.task.duration
     type: histogram
     value_type: number
     unit: ms
@@ -11,6 +27,7 @@ metrics:
       allowed: [task.type, task.object]
       required: [task.type]
   task.count:
+    otel_name: gen_ai.agent.a2at.task.count
     type: counter
     value_type: integer
     unit: ''
@@ -19,6 +36,7 @@ metrics:
       allowed: [task.type, task.object]
       required: [task.type]
   negotiation.rounds:
+    otel_name: gen_ai.agent.a2at.negotiation.rounds
     type: histogram
     value_type: integer
     unit: '{round}'
@@ -27,6 +45,7 @@ metrics:
       allowed: [negotiation.id, negotiation.result]
       required: []
   negotiation.count:
+    otel_name: gen_ai.agent.a2at.negotiation.count
     type: counter
     value_type: integer
     unit: ''
@@ -35,6 +54,7 @@ metrics:
       allowed: [negotiation.result]
       required: []
   notification.count:
+    otel_name: gen_ai.agent.a2at.notification.count
     type: counter
     value_type: integer
     unit: ''
@@ -43,6 +63,7 @@ metrics:
       allowed: [notification.topic]
       required: []
   authorization.preauthorize.count:
+    otel_name: gen_ai.agent.a2at.authorization.preauthorize.count
     type: counter
     value_type: integer
     unit: ''
@@ -51,6 +72,7 @@ metrics:
       allowed: [authorization.policy.operation.type]
       required: []
   authorization.preauthorize.duration:
+    otel_name: gen_ai.agent.a2at.authorization.preauthorize.duration
     type: histogram
     value_type: number
     unit: ms
@@ -59,6 +81,7 @@ metrics:
       allowed: [authorization.policy.operation.type]
       required: []
   authorization.execute.count:
+    otel_name: gen_ai.agent.a2at.authorization.execute.count
     type: counter
     value_type: integer
     unit: ''

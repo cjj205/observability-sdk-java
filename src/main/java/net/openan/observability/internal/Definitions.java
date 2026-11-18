@@ -13,8 +13,9 @@ public final class Definitions {
     public static final String STREAM_EVENT = "message/stream-event";
     public static final String STREAM_ERROR = "message/stream-error";
     public static final String MESSAGE_LOG = PREFIX + "message";
-    public record Attribute(String name, String signals, boolean integer, boolean stringArray, Set<String> values) {}
-    public record Metric(boolean histogram, boolean integer, String unit, Set<String> dimensions, Set<String> requiredDimensions) {}
+    public enum AttributeType { STRING, INTEGER, STRING_ARRAY }
+    public record Attribute(String name, String signals, AttributeType type, Set<String> values) {}
+    public record Metric(String name, boolean histogram, boolean integer, String unit, Set<String> dimensions, Set<String> requiredDimensions) {}
     public record Signal(String extension, Set<String> attributes, Set<String> required) {}
     public record NamedSignal(String name, String namePrefix, Signal signal) {
         public boolean matches(String candidate) { return name != null ? name.equals(candidate) : candidate.startsWith(namePrefix) && candidate.length() > namePrefix.length(); }
@@ -32,46 +33,24 @@ public final class Definitions {
     public static final Map<String, NamedSignal> NAMED_TRACES = CONFIGURATION.traces();
     public static final Map<String, NamedSignal> NAMED_LOGS = CONFIGURATION.namedLogs();
     public static final Map<String, String> CONFIGURATION_VERSIONS = CONFIGURATION.versions();
-    static final Map<String, Attribute> ATTRIBUTES = Map.ofEntries(
-        entry("extension.name", "SML", false, "task-t", "negotiation-t", "notification-t", "authorization-t"),
-        entry("task.type", "SML", false), entry("task.object", "SML", false),
-        entry("negotiation.id", "SML", false), entry("negotiation.round", "SML", true),
-        entry("negotiation.total_rounds", "SL", true), entry("negotiation.max_rounds", "L", true),
-        entry("negotiation.result", "SML", false), entry("negotiation.performative", "SML", false),
-        entry("notification.topic", "SML", false), entry("push.notification.url", "SL", false),
-        entry("authorization.stage", "SL", false),
-        entry("authorization.policy.operation.type", "SML", false),
-        entry("workflow.id", "SML", false), entry("workflow.type", "SML", false),
-        entry("workflow.status", "SML", false),
-        entry("workflow.session_id", "SL", false), entry("workflow.step", "SML", false),
-        entry("workflow.step.index", "SML", true),
-        entry("workflow.step.status", "SML", false),
-        entry("workflow.step.owner_agent", "SL", false),
-        entry("business.domain", "SL", false), entry("business.customer", "SL", false),
-        attribute("gen_ai.agent.name", "gen_ai.agent.name", "SML", false),
-        entry("agent.role", "SML", false), arrayEntry("agent.skills", "SL"),
-        entry("agent.state", "SML", false),
-        entry("substep.name", "SML", false), entry("substep.status", "SML", false),
-        attribute("gen_ai.request.model", "gen_ai.request.model", "SML", false),
-        attribute("gen_ai.response.model", "gen_ai.response.model", "SL", false),
-        attribute("gen_ai.token.type", "gen_ai.token.type", "M", false),
-        attribute("operation.name", A2A_PREFIX + "operation.name", "SM", false),
-        attribute("task_id", A2A_PREFIX + "task_id", "S", false),
-        attribute("context_id", A2A_PREFIX + "context_id", "S", false),
-        attribute("message_id", A2A_PREFIX + "message_id", "S", false),
-        attribute("Role", A2A_PREFIX + "Role", "S", false, "user", "agent"),
-        attribute("Extensions", A2A_PREFIX + "Extensions", "S", false),
-        attribute("parts.number", A2A_PREFIX + "parts.number", "S", true),
-        attribute("config_id", A2A_PREFIX + "config_id", "S", false),
-        attribute("Request", A2A_PREFIX + "Request", "S", false),
-        attribute("Response", A2A_PREFIX + "Response", "S", false),
-        attribute("streaming-event", A2A_PREFIX + "streaming-event", "S", false),
-        attribute("error.type", "error.type", "SM", false),
-        attribute("gen_ai.system", "gen_ai.system", "M", false));
+    private static final Map<String, Attribute> NATIVE_A2A_ATTRIBUTES = Map.ofEntries(
+        nativeAttribute("operation.name", A2A_PREFIX + "operation.name", "SM", AttributeType.STRING),
+        nativeAttribute("task_id", A2A_PREFIX + "task_id", "S", AttributeType.STRING),
+        nativeAttribute("context_id", A2A_PREFIX + "context_id", "S", AttributeType.STRING),
+        nativeAttribute("message_id", A2A_PREFIX + "message_id", "S", AttributeType.STRING),
+        nativeAttribute("Role", A2A_PREFIX + "Role", "S", AttributeType.STRING),
+        nativeAttribute("Extensions", A2A_PREFIX + "Extensions", "S", AttributeType.STRING),
+        nativeAttribute("parts.number", A2A_PREFIX + "parts.number", "S", AttributeType.INTEGER),
+        nativeAttribute("config_id", A2A_PREFIX + "config_id", "S", AttributeType.STRING),
+        nativeAttribute("Request", A2A_PREFIX + "Request", "S", AttributeType.STRING),
+        nativeAttribute("Response", A2A_PREFIX + "Response", "S", AttributeType.STRING),
+        nativeAttribute("streaming-event", A2A_PREFIX + "streaming-event", "S", AttributeType.STRING),
+        nativeAttribute("error.type", "error.type", "SM", AttributeType.STRING),
+        nativeAttribute("gen_ai.system", "gen_ai.system", "M", AttributeType.STRING));
     public static final Map<String, Metric> METRICS = CONFIGURATION.metrics();
     public static final String A2A_OPERATION_DURATION = "gen_ai.client.operation.duration";
     public static final String A2A_STREAMING_DURATION = A2A_PREFIX + "streaming.duration";
-    private static final Metric A2A_DURATION = new Metric(true, false, "s",
+    private static final Metric A2A_DURATION = new Metric(A2A_OPERATION_DURATION, true, false, "s",
         Set.of("operation.name", "gen_ai.system", "error.type"), Set.of("operation.name"));
     public static final Map<String, Metric> A2A_METRICS = Map.of(
         A2A_OPERATION_DURATION, A2A_DURATION, A2A_STREAMING_DURATION, A2A_DURATION);
@@ -93,22 +72,16 @@ public final class Definitions {
         return Set.copyOf(values);
     }
 
-    private static Map.Entry<String, Attribute> entry(String name, String signals, boolean integer, String... values) {
-        return attribute(name, PREFIX + name, signals, integer, false, values);
+    private static Map.Entry<String, Attribute> nativeAttribute(String key, String name, String signals, AttributeType type) {
+        return Map.entry(key, new Attribute(name, signals, type, Set.of()));
     }
-    private static Map.Entry<String, Attribute> arrayEntry(String name, String signals) {
-        return attribute(name, PREFIX + name, signals, false, true);
-    }
-    private static Map.Entry<String, Attribute> attribute(String key, String name, String signals, boolean integer, String... values) {
-        return attribute(key, name, signals, integer, false, values);
-    }
-    private static Map.Entry<String, Attribute> attribute(String key, String name, String signals, boolean integer, boolean stringArray, String... values) {
-        return Map.entry(key, new Attribute(name, signals, integer, stringArray, Set.of(values)));
-    }
-    public static String metricName(String name) { return name.startsWith("gen_ai.") ? name : PREFIX + name; }
     public static String shortName(String name) { return name.startsWith(PREFIX) ? name.substring(PREFIX.length()) : name; }
+    public static Attribute attribute(String key) {
+        Attribute configured = CONFIGURATION.attributes().get(key);
+        return configured == null ? NATIVE_A2A_ATTRIBUTES.get(key) : configured;
+    }
     public static String attributeName(String key) {
-        Attribute attribute = ATTRIBUTES.get(key);
+        Attribute attribute = attribute(key);
         return attribute == null ? PREFIX + key : attribute.name();
     }
     private Definitions() {}

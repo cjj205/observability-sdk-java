@@ -64,7 +64,7 @@ class A2ACoverageTest {
                 "gen_ai.agent.a2a.config_id", "gen_ai.agent.a2a.Request", "gen_ai.agent.a2a.Response", "error.type",
                 "gen_ai.agent.a2at.extension.name", "gen_ai.agent.a2at.task.type"),
                 stored.asMap().keySet().stream().map(AttributeKey::getKey).collect(Collectors.toSet()));
-            assertEquals("agent", stored.get(AttributeKey.stringKey("gen_ai.agent.a2a.Role")));
+            assertEquals("AGENT", stored.get(AttributeKey.stringKey("gen_ai.agent.a2a.Role")));
             assertEquals(2L, stored.get(AttributeKey.longKey("gen_ai.agent.a2a.parts.number")));
             assertEquals("https://example.com/test", stored.get(AttributeKey.stringKey("gen_ai.agent.a2a.Request")));
             assertEquals("redacted summary", stored.get(AttributeKey.stringKey("gen_ai.agent.a2a.Response")));
@@ -82,7 +82,9 @@ class A2ACoverageTest {
             observe.trace("message/send", SignalKind.CLIENT,
                 Map.of("operation.name", "message/send", "gen_ai.agent.a2a.operation.name", "message/send")).end();
             observe.trace("tasks/get", SignalKind.CLIENT, Map.of("extension.name", "negotiation-t")).end();
-            assertTrue(spans.getFinishedSpanItems().isEmpty());
+            assertEquals(1, spans.getFinishedSpanItems().size());
+            assertEquals("admin", spans.getFinishedSpanItems().get(0).getAttributes()
+                .get(AttributeKey.stringKey("gen_ai.agent.a2a.Role")));
         }
     }
 

@@ -31,7 +31,7 @@ public final class Observability {
         tracer = otel.getTracer("a2at.observability");
         logger = otel.getLogsBridge().get("a2at.observability");
         Meter meter = otel.getMeter("a2at.observability");
-        Definitions.METRICS.forEach((name, metric) -> registerMetric(meter, Definitions.metricName(name), metric));
+        Definitions.METRICS.forEach((name, metric) -> registerMetric(meter, metric.name(), metric));
         Definitions.A2A_METRICS.forEach((name, metric) -> registerMetric(meter, name, metric));
     }
     private void registerMetric(Meter meter, String name, Definitions.Metric metric) {
@@ -96,7 +96,7 @@ public final class Observability {
                     if (requiredValue == null || requiredValue instanceof String text && text.isBlank()) throw new IllegalArgumentException();
                 }
             }
-            String instrumentName = a2a ? id : Definitions.metricName(name);
+            String instrumentName = a2a ? id : definition.name();
             if (definition.histogram()) histograms.get(instrumentName).record(number, attrs);
             else counters.get(instrumentName).add(value.longValue(), attrs);
         } catch (RuntimeException e) { DIAGNOSTICS.warning("Observation metric rejected"); }
