@@ -1,0 +1,38 @@
+version: 1.0.0
+signal: agent
+metrics:
+  substep.duration:
+    type: histogram
+    value_type: number
+    unit: ms
+    attributes:
+      allowed: [gen_ai.agent.name, substep.name]
+      required: [gen_ai.agent.name, substep.name]
+  gen_ai.client.token.usage:
+    type: counter
+    value_type: integer
+    unit: token
+    attributes:
+      allowed: [gen_ai.agent.name, gen_ai.request.model, gen_ai.token.type]
+      required: [gen_ai.agent.name, gen_ai.request.model, gen_ai.token.type]
+
+traces:
+  substep:
+    name_prefix: a2at.substep.
+    attributes:
+      allowed: [gen_ai.agent.name, substep.name, substep.status]
+      required: [gen_ai.agent.name, substep.name, substep.status]
+
+logs:
+  agent:
+    name: gen_ai.agent.a2at.agent
+    attributes:
+      allowed: [gen_ai.agent.name, agent.role, agent.skills, agent.state]
+      required: [gen_ai.agent.name, agent.state]
+  substep:
+    name: gen_ai.agent.a2at.substep
+    attributes:
+      allowed: [gen_ai.agent.name, substep.name, substep.status, workflow.step, workflow.step.index]
+      required: [gen_ai.agent.name, substep.name, substep.status]
+
+extensions: {}

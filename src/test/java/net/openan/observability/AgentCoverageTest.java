@@ -1,0 +1,67 @@
+package net.openan.observability;
+
+import net.openan.observability.internal.Definitions;
+
+import static org.junit.jupiter.api.Assertions.*;
+
+import io.opentelemetry.api.common.AttributeKey;
+import io.opentelemetry.sdk.OpenTelemetrySdk;
+import io.opentelemetry.sdk.logs.SdkLoggerProvider;
+import io.opentelemetry.sdk.logs.export.SimpleLogRecordProcessor;
+import io.opentelemetry.sdk.metrics.SdkMeterProvider;
+import io.opentelemetry.sdk.testing.exporter.InMemoryLogRecordExporter;
+import io.opentelemetry.sdk.testing.exporter.InMemoryMetricReader;
+import io.opentelemetry.sdk.testing.exporter.InMemorySpanExporter;
+import io.opentelemetry.sdk.trace.SdkTracerProvider;
+import io.opentelemetry.sdk.trace.export.SimpleSpanProcessor;
+import java.util.List;
+import java.util.Map;
+import org.junit.jupiter.api.Test;
+
+class AgentCoverageTest {
+    @Test void exportsAgentSubstepTokenUsageAndLifecycleSignals() {
+        var spans = InMemorySpanExporter.create();
+        var logs = InMemoryLogRecordExporter.create();
+        var metrics = InMemoryMetricReader.create();
+        try (var sdk = OpenTelemetrySdk.builder()
+            .setTracerProvider(SdkTracerProvider.builder().addSpanProcessor(SimpleSpanProcessor.create(spans)).build())
+            .setLoggerProvider(SdkLoggerProvider.builder().addLogRecordProcessor(SimpleLogRecordProcessor.create(logs)).build())
+            .setMeterProvider(SdkMeterProvider.builder().registerMetricReader(metrics).build()).build()) {
+            var observe = new Observability(sdk);
+            var substep = Map.of("gen_ai.agent.name", "diagnosis-agent", "substep.name", "retrieve-alarms", "substep.status", "active");
+            var span = observe.trace("a2at.substep.retrieve-alarms", SignalKind.INTERNAL, substep);
+            observe.log("gen_ai.agent.a2at.agent", LogSeverity.INFO, "agent started", Map.of(
+                "gen_ai.agent.name", "diagnosis-agent", "agent.role", "diagnosis", "agent.skills", List.of("retrieve", "reason"), "agent.state", "running"), span);
+            observe.log("gen_ai.agent.a2at.substep", LogSeverity.INFO, "substep started", Map.of(
+                "gen_ai.agent.name", "diagnosis-agent", "substep.name", "retrieve-alarms", "substep.status", "active", "workflow.step", "diagnosis", "workflow.step.index", 1), span);
+            observe.metric("substep.duration", 8, Map.of("gen_ai.agent.name", "diagnosis-agent", "substep.name", "retrieve-alarms"));
+            observe.metric("gen_ai.client.token.usage", 120, Map.of("gen_ai.agent.name", "diagnosis-agent", "gen_ai.request.model", "model-1", "gen_ai.token.type", "input"));
+            span.end();
+
+            assertEquals(1, spans.getFinishedSpanItems().size());
+            assertEquals("a2at.substep.retrieve-alarms", spans.getFinishedSpanItems().get(0).getName());
+            assertEquals(List.of("retrieve", "reason"), logs.getFinishedLogRecordItems().get(0).getAttributes()
+                .get(AttributeKey.stringArrayKey(Definitions.PREFIX + "agent.skills")));
+            assertEquals(2, metrics.collectAllMetrics().size());
+            assertTrue(metrics.collectAllMetrics().stream().anyMatch(metric -> metric.getName().equals("gen_ai.client.token.usage")));
+        }
+    }
+
+    @Test void rejectsInvalidAgentStateAndTokenAttributes() {
+        var spans = InMemorySpanExporter.create();
+        var metrics = InMemoryMetricReader.create();
+        var logs = InMemoryLogRecordExporter.create();
+        try (var sdk = OpenTelemetrySdk.builder()
+            .setTracerProvider(SdkTracerProvider.builder().addSpanProcessor(SimpleSpanProcessor.create(spans)).build())
+            .setLoggerProvider(SdkLoggerProvider.builder().addLogRecordProcessor(SimpleLogRecordProcessor.create(logs)).build())
+            .setMeterProvider(SdkMeterProvider.builder().registerMetricReader(metrics).build()).build()) {
+            var observe = new Observability(sdk);
+            observe.trace("a2at.substep.work", SignalKind.INTERNAL, Map.of("gen_ai.agent.name", "a", "substep.name", "work", "substep.status", "unknown")).end();
+            observe.metric("gen_ai.client.token.usage", 1, Map.of("gen_ai.agent.name", "a", "gen_ai.request.model", "m", "gen_ai.token.type", "both"));
+            observe.log("gen_ai.agent.a2at.agent", LogSeverity.INFO, "invalid", Map.of("gen_ai.agent.name", "a", "agent.state", "running", "workflow.id", "wf-1"));
+            assertTrue(spans.getFinishedSpanItems().isEmpty());
+            assertTrue(metrics.collectAllMetrics().isEmpty());
+            assertTrue(logs.getFinishedLogRecordItems().isEmpty());
+        }
+    }
+}

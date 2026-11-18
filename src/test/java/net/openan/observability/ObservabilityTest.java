@@ -36,7 +36,7 @@ class ObservabilityTest {
         Map<String, String> attrs = Map.of("extension.name", "TASK-T", "task.type", "diagnosis", "task.object", "demo");
         ObservationSpan span = observe.trace("message/send", SignalKind.CLIENT, attrs);
         observe.log("gen_ai.agent.a2at.message", LogSeverity.INFO, "token=abc https://u:p@example.com/path?token=x", attrs, span);
-        observe.metric("task.duration", 42000, Map.of("task.type", "diagnosis"));
+        observe.metric("task.duration", 42000, Map.of("task.type", "diagnosis", "task.object", "demo"));
         observe.metric("task.count", 1, Map.of("task.type", "diagnosis"));
         span.ok(); span.end(); span.end();
         var data = spans.getFinishedSpanItems().get(0);
@@ -55,19 +55,38 @@ class ObservabilityTest {
         assertEquals(1, point.getCount()); assertEquals(42000, point.getSum());
         assertEquals(1, metric("task.count").getLongSumData().getPoints().iterator().next().getValue());
     }
-    @Test void allEightMetricsUseSpecifiedTypesUnitsAndDimensions() {
+    @Test void bundledSignalConfigurationHasVersionsAndMetricAttributeRules() {
+        assertEquals("1.0.0", Definitions.CONFIGURATION_VERSIONS.get("a2at"));
+        assertEquals("1.0.0", Definitions.CONFIGURATION_VERSIONS.get("agent"));
+        assertEquals("1.0.0", Definitions.CONFIGURATION_VERSIONS.get("workflow"));
+        observe.metric("task.duration", 1, Map.of("task.type", "diagnosis", "task.object", "incident"));
+        observe.metric("task.duration", 1, Map.of("task.type", "diagnosis", "notification.topic", "wrong-extension"));
+        var points = metric("task.duration").getHistogramData().getPoints();
+        assertEquals(1, points.size());
+        assertEquals("incident", points.iterator().next().getAttributes().get(AttributeKey.stringKey(Definitions.PREFIX + "task.object")));
+    }
+    @Test void allConfiguredMetricsUseSpecifiedTypesUnitsAndDimensions() {
         Definitions.METRICS.forEach((name, definition) -> {
             Map<String, Object> attrs = new HashMap<>();
-            definition.dimensions().forEach(dimension -> attrs.put(dimension, dimension.equals("negotiation.result") ? "accept" : "test"));
+            definition.dimensions().forEach(dimension -> attrs.put(dimension, metricValue(dimension)));
             observe.metric(name, 2, attrs);
         });
-        assertEquals(8, metrics.collectAllMetrics().size());
+        assertEquals(Definitions.METRICS.size(), metrics.collectAllMetrics().size());
         Definitions.METRICS.forEach((name, definition) -> {
             MetricData data = metric(name);
             assertEquals(definition.unit(), data.getUnit());
             if (definition.histogram()) assertEquals(2, data.getHistogramData().getPoints().iterator().next().getSum());
             else assertEquals(2, data.getLongSumData().getPoints().iterator().next().getValue());
         });
+    }
+    private static Object metricValue(String dimension) {
+        return switch (dimension) {
+            case "negotiation.result" -> "accept";
+            case "workflow.status" -> "completed";
+            case "workflow.step.status" -> "done";
+            case "gen_ai.token.type" -> "input";
+            default -> "test";
+        };
     }
     @Test void invalidInputsAreDiscardedWithoutThrowing() {
         Map<String, Object> duplicate = new HashMap<>(); duplicate.put("task.type", "x"); duplicate.put(Definitions.PREFIX + "task.type", "y");
@@ -91,7 +110,8 @@ class ObservabilityTest {
         assertFalse(AttributesConverter.clean("Authorization: Bearer abc123").contains("abc123"));
         assertFalse(AttributesConverter.clean("{\"token\":\"abc123\"}").contains("abc123"));
         assertThrows(IllegalArgumentException.class, () -> AttributesConverter.convert(Map.of("unknown", "x"), 'S', null));
-        assertThrows(IllegalArgumentException.class, () -> AttributesConverter.convert(Map.of("task.object", "x"), 'M', Set.of("task.object")));
+        assertEquals("x", AttributesConverter.convert(Map.of("task.object", "x"), 'M', Set.of("task.object"))
+            .get(AttributeKey.stringKey(Definitions.PREFIX + "task.object")));
     }
     @Test void explicitAndCurrentContextCreateParentChild() {
         ObservationSpan parent = observe.trace("message/send", SignalKind.SERVER, task());
@@ -157,5 +177,5 @@ class ObservabilityTest {
         var point = metric("task.duration").getHistogramData().getPoints().iterator().next();
         assertEquals(2, point.getCount()); assertEquals(6, point.getSum());
     }
-    private MetricData metric(String name) { return metrics.collectAllMetrics().stream().filter(m -> m.getName().equals(Definitions.PREFIX + name)).findFirst().orElseThrow(); }
+    private MetricData metric(String name) { return metrics.collectAllMetrics().stream().filter(m -> m.getName().equals(Definitions.metricName(name))).findFirst().orElseThrow(); }
 }

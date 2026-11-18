@@ -31,7 +31,7 @@ public final class Observability {
         tracer = otel.getTracer("a2at.observability");
         logger = otel.getLogsBridge().get("a2at.observability");
         Meter meter = otel.getMeter("a2at.observability");
-        Definitions.METRICS.forEach((name, metric) -> registerMetric(meter, Definitions.PREFIX + name, metric));
+        Definitions.METRICS.forEach((name, metric) -> registerMetric(meter, Definitions.metricName(name), metric));
         Definitions.A2A_METRICS.forEach((name, metric) -> registerMetric(meter, name, metric));
     }
     private void registerMetric(Meter meter, String name, Definitions.Metric metric) {
@@ -45,10 +45,17 @@ public final class Observability {
         try {
             boolean streamEvent = Definitions.STREAM_EVENT.equals(name);
             boolean clientOnly = streamEvent || Definitions.STREAM_ERROR.equals(name);
-            if (!Definitions.A2A_SPAN_NAMES.contains(name)
-                || (kind != SignalKind.CLIENT && (kind != SignalKind.SERVER || clientOnly))) throw new IllegalArgumentException();
-            Definitions.Signal extension = AttributesConverter.selectOptionalSignal(attributes, Definitions.SPANS);
-            Definitions.Signal definition = Definitions.span(name, extension);
+            boolean a2a = Definitions.A2A_SPAN_NAMES.contains(name);
+            Definitions.Signal definition;
+            if (a2a) {
+                if (kind != SignalKind.CLIENT && (kind != SignalKind.SERVER || clientOnly)) throw new IllegalArgumentException();
+                Definitions.Signal extension = AttributesConverter.selectOptionalSignal(attributes, Definitions.SPANS);
+                definition = Definitions.span(name, extension);
+            } else {
+                if (kind != SignalKind.INTERNAL || streamEvent) throw new IllegalArgumentException();
+                definition = Definitions.namedTrace(name);
+                if (definition == null) throw new IllegalArgumentException();
+            }
             Attributes attrs = AttributesConverter.convertSignal(attributes, 'S', definition, true);
             SpanBuilder builder = tracer.spanBuilder(name).setSpanKind(SpanKind.valueOf(kind.name())).setAllAttributes(attrs);
             if (streamEvent) {
@@ -81,11 +88,15 @@ public final class Observability {
             if (a2a) {
                 if (attrs.get(AttributeKey.stringKey(Definitions.A2A_PREFIX + "operation.name")) == null) throw new IllegalArgumentException();
                 attrs = attrs.toBuilder().put("gen_ai.system", "A2A").build();
-            } else if (name.equals("task.duration") || name.equals("task.count")) {
-                String taskType = attrs.get(AttributeKey.stringKey(Definitions.PREFIX + "task.type"));
-                if (taskType == null || taskType.isBlank()) throw new IllegalArgumentException();
+            } else {
+                for (String required : definition.requiredDimensions()) {
+                    Object requiredValue = attrs.asMap().entrySet().stream()
+                        .filter(entry -> entry.getKey().getKey().equals(Definitions.attributeName(required)))
+                        .map(Map.Entry::getValue).findFirst().orElse(null);
+                    if (requiredValue == null || requiredValue instanceof String text && text.isBlank()) throw new IllegalArgumentException();
+                }
             }
-            String instrumentName = a2a ? id : Definitions.PREFIX + name;
+            String instrumentName = a2a ? id : Definitions.metricName(name);
             if (definition.histogram()) histograms.get(instrumentName).record(number, attrs);
             else counters.get(instrumentName).add(value.longValue(), attrs);
         } catch (RuntimeException e) { DIAGNOSTICS.warning("Observation metric rejected"); }
@@ -93,8 +104,10 @@ public final class Observability {
     public void log(String name, LogSeverity severity, String body, Map<String, ?> attributes) { log(name, severity, body, attributes, null); }
     public void log(String name, LogSeverity severity, String body, Map<String, ?> attributes, ObservationSpan span) {
         try {
-            if (!Definitions.MESSAGE_LOG.equals(name) || severity == null || body == null) throw new IllegalArgumentException();
-            Definitions.Signal definition = AttributesConverter.selectSignal(attributes, Definitions.LOGS);
+            if (severity == null || body == null) throw new IllegalArgumentException();
+            Definitions.Signal definition = Definitions.MESSAGE_LOG.equals(name)
+                ? AttributesConverter.selectSignal(attributes, Definitions.LOGS) : Definitions.namedLog(name);
+            if (definition == null) throw new IllegalArgumentException();
             Attributes attrs = AttributesConverter.convertSignal(attributes, 'L', definition, true);
             logger.logRecordBuilder().setEventName(name).setSeverity(Severity.valueOf(severity.name()))
                 .setBody(AttributesConverter.clean(body)).setAllAttributes(attrs).setContext(span == null ? Context.current() : span.context()).emit();

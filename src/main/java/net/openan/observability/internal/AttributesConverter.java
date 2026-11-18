@@ -45,6 +45,14 @@ public final class AttributesConverter {
                 long number = ((Number) value).longValue();
                 if (key.equals("parts.number") && number < 0) throw new IllegalArgumentException();
                 output.put(definition.name(), number);
+            } else if (definition.stringArray()) {
+                if (!(value instanceof java.util.List<?> values) || values.isEmpty()) throw new IllegalArgumentException();
+                java.util.List<String> cleaned = new java.util.ArrayList<>();
+                for (Object valueItem : values) {
+                    if (!(valueItem instanceof String text) || text.isBlank()) throw new IllegalArgumentException();
+                    cleaned.add(clean(text));
+                }
+                output.put(io.opentelemetry.api.common.AttributeKey.stringArrayKey(definition.name()), cleaned);
             } else {
                 if (!(value instanceof String)) throw new IllegalArgumentException();
                 String s = (String) value;
@@ -85,7 +93,7 @@ public final class AttributesConverter {
         Attributes attributes = convert(input, signal, definition.attributes());
         if (requireFields) {
             for (String key : definition.required()) {
-                if (attributes.get(io.opentelemetry.api.common.AttributeKey.stringKey(Definitions.PREFIX + key)) == null)
+                if (attributes.asMap().keySet().stream().noneMatch(attribute -> attribute.getKey().equals(Definitions.attributeName(key))))
                     throw new IllegalArgumentException();
             }
         }

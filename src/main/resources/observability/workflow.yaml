@@ -1,0 +1,50 @@
+version: 1.0.0
+signal: workflow
+metrics:
+  workflow.duration:
+    type: histogram
+    value_type: number
+    unit: ms
+    attributes:
+      allowed: [workflow.type, workflow.status]
+      required: [workflow.type, workflow.status]
+  workflow.count:
+    type: counter
+    value_type: integer
+    unit: ''
+    attributes:
+      allowed: [workflow.type, workflow.status]
+      required: [workflow.type, workflow.status]
+  step.duration:
+    type: histogram
+    value_type: number
+    unit: ms
+    attributes:
+      allowed: [workflow.step, gen_ai.agent.name]
+      required: [workflow.step, gen_ai.agent.name]
+
+traces:
+  workflow:
+    name: a2at.workflow
+    attributes:
+      allowed: [workflow.id, workflow.type, workflow.status, workflow.session_id]
+      required: [workflow.id, workflow.type, workflow.status]
+  step:
+    name_prefix: a2at.step.
+    attributes:
+      allowed: [workflow.step, workflow.step.index, workflow.step.status, workflow.step.owner_agent]
+      required: [workflow.step, workflow.step.index, workflow.step.status]
+
+logs:
+  workflow:
+    name: gen_ai.agent.a2at.workflow
+    attributes:
+      allowed: [workflow.id, workflow.type, workflow.status, workflow.session_id, business.domain, business.customer]
+      required: [workflow.id, workflow.type, workflow.status]
+  step:
+    name: gen_ai.agent.a2at.step
+    attributes:
+      allowed: [workflow.step, workflow.step.index, workflow.step.status, workflow.step.owner_agent]
+      required: [workflow.step, workflow.step.index, workflow.step.status]
+
+extensions: {}

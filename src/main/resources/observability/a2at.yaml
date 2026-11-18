@@ -1,0 +1,98 @@
+version: 1.0.0
+signal: a2at
+
+metrics:
+  task.duration:
+    type: histogram
+    value_type: number
+    unit: ms
+    extension: task-t
+    attributes:
+      allowed: [task.type, task.object]
+      required: [task.type]
+  task.count:
+    type: counter
+    value_type: integer
+    unit: ''
+    extension: task-t
+    attributes:
+      allowed: [task.type, task.object]
+      required: [task.type]
+  negotiation.rounds:
+    type: histogram
+    value_type: integer
+    unit: '{round}'
+    extension: negotiation-t
+    attributes:
+      allowed: [negotiation.id, negotiation.result]
+      required: []
+  negotiation.count:
+    type: counter
+    value_type: integer
+    unit: ''
+    extension: negotiation-t
+    attributes:
+      allowed: [negotiation.result]
+      required: []
+  notification.count:
+    type: counter
+    value_type: integer
+    unit: ''
+    extension: notification-t
+    attributes:
+      allowed: [notification.topic]
+      required: []
+  authorization.preauthorize.count:
+    type: counter
+    value_type: integer
+    unit: ''
+    extension: authorization-t
+    attributes:
+      allowed: [authorization.policy.operation.type]
+      required: []
+  authorization.preauthorize.duration:
+    type: histogram
+    value_type: number
+    unit: ms
+    extension: authorization-t
+    attributes:
+      allowed: [authorization.policy.operation.type]
+      required: []
+  authorization.execute.count:
+    type: counter
+    value_type: integer
+    unit: ''
+    extension: authorization-t
+    attributes:
+      allowed: [authorization.policy.operation.type]
+      required: []
+
+extensions:
+  task-t:
+    span_attributes:
+      allowed: [extension.name, task.type, task.object]
+      required: [extension.name, task.type]
+    log_attributes:
+      allowed: [extension.name, task.type, task.object]
+      required: [extension.name, task.type]
+  negotiation-t:
+    span_attributes:
+      allowed: [extension.name, negotiation.id, negotiation.round, negotiation.total_rounds, negotiation.result, negotiation.performative]
+      required: [extension.name]
+    log_attributes:
+      allowed: [extension.name, negotiation.id, negotiation.round, negotiation.total_rounds, negotiation.max_rounds, negotiation.result, negotiation.performative]
+      required: [extension.name]
+  notification-t:
+    span_attributes:
+      allowed: [extension.name, notification.topic, push.notification.url]
+      required: [extension.name]
+    log_attributes:
+      allowed: [extension.name, notification.topic, push.notification.url]
+      required: [extension.name]
+  authorization-t:
+    span_attributes:
+      allowed: [extension.name, authorization.stage, authorization.policy.operation.type]
+      required: [extension.name]
+    log_attributes:
+      allowed: [extension.name, authorization.stage, authorization.policy.operation.type]
+      required: [extension.name]

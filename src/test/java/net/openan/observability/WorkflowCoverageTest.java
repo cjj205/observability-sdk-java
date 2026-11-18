@@ -1,0 +1,71 @@
+package net.openan.observability;
+
+import net.openan.observability.internal.Definitions;
+
+import static org.junit.jupiter.api.Assertions.*;
+
+import io.opentelemetry.api.common.AttributeKey;
+import io.opentelemetry.sdk.OpenTelemetrySdk;
+import io.opentelemetry.sdk.logs.SdkLoggerProvider;
+import io.opentelemetry.sdk.logs.export.SimpleLogRecordProcessor;
+import io.opentelemetry.sdk.metrics.SdkMeterProvider;
+import io.opentelemetry.sdk.testing.exporter.InMemoryLogRecordExporter;
+import io.opentelemetry.sdk.testing.exporter.InMemoryMetricReader;
+import io.opentelemetry.sdk.testing.exporter.InMemorySpanExporter;
+import io.opentelemetry.sdk.trace.SdkTracerProvider;
+import io.opentelemetry.sdk.trace.export.SimpleSpanProcessor;
+import java.util.Map;
+import org.junit.jupiter.api.Test;
+
+class WorkflowCoverageTest {
+    private static final String P = Definitions.PREFIX;
+
+    @Test void exportsWorkflowTraceMetricsAndLogsWithConfiguredAttributeSets() {
+        var spans = InMemorySpanExporter.create();
+        var logs = InMemoryLogRecordExporter.create();
+        var metrics = InMemoryMetricReader.create();
+        try (var sdk = OpenTelemetrySdk.builder()
+            .setTracerProvider(SdkTracerProvider.builder().addSpanProcessor(SimpleSpanProcessor.create(spans)).build())
+            .setLoggerProvider(SdkLoggerProvider.builder().addLogRecordProcessor(SimpleLogRecordProcessor.create(logs)).build())
+            .setMeterProvider(SdkMeterProvider.builder().registerMetricReader(metrics).build()).build()) {
+            var observe = new Observability(sdk);
+            var workflow = Map.of("workflow.id", "wf-1", "workflow.type", "fault-diagnosis", "workflow.status", "running", "workflow.session_id", "s-1");
+            var step = Map.of("workflow.step", "collect-alarm", "workflow.step.index", 1, "workflow.step.status", "active", "workflow.step.owner_agent", "alarm-agent");
+            var workflowSpan = observe.trace("a2at.workflow", SignalKind.INTERNAL, workflow);
+            var stepSpan = observe.trace("a2at.step.collect-alarm", SignalKind.INTERNAL, step, workflowSpan);
+            observe.log("gen_ai.agent.a2at.workflow", LogSeverity.INFO, "workflow started",
+                Map.of("workflow.id", "wf-1", "workflow.type", "fault-diagnosis", "workflow.status", "running", "business.domain", "transport", "business.customer", "customer-1"), workflowSpan);
+            observe.log("gen_ai.agent.a2at.step", LogSeverity.INFO, "step started", step, stepSpan);
+            observe.metric("workflow.duration", 42, Map.of("workflow.type", "fault-diagnosis", "workflow.status", "completed"));
+            observe.metric("workflow.count", 1, Map.of("workflow.type", "fault-diagnosis", "workflow.status", "completed"));
+            observe.metric("step.duration", 5, Map.of("workflow.step", "collect-alarm", "gen_ai.agent.name", "alarm-agent"));
+            stepSpan.end(); workflowSpan.end();
+
+            assertEquals(2, spans.getFinishedSpanItems().size());
+            assertEquals("a2at.workflow", spans.getFinishedSpanItems().get(1).getName());
+            assertEquals("wf-1", spans.getFinishedSpanItems().get(1).getAttributes().get(AttributeKey.stringKey(P + "workflow.id")));
+            assertEquals(2, logs.getFinishedLogRecordItems().size());
+            assertEquals("transport", logs.getFinishedLogRecordItems().get(0).getAttributes().get(AttributeKey.stringKey(P + "business.domain")));
+            assertEquals(3, metrics.collectAllMetrics().size());
+        }
+    }
+
+    @Test void rejectsWorkflowNamesKindsAndCrossSignalAttributes() {
+        var spans = InMemorySpanExporter.create();
+        var metrics = InMemoryMetricReader.create();
+        var logs = InMemoryLogRecordExporter.create();
+        try (var sdk = OpenTelemetrySdk.builder()
+            .setTracerProvider(SdkTracerProvider.builder().addSpanProcessor(SimpleSpanProcessor.create(spans)).build())
+            .setLoggerProvider(SdkLoggerProvider.builder().addLogRecordProcessor(SimpleLogRecordProcessor.create(logs)).build())
+            .setMeterProvider(SdkMeterProvider.builder().registerMetricReader(metrics).build()).build()) {
+            var observe = new Observability(sdk);
+            observe.trace("a2at.workflow", SignalKind.CLIENT, Map.of("workflow.id", "wf-1", "workflow.type", "diagnosis", "workflow.status", "running")).end();
+            observe.trace("a2at.step.", SignalKind.INTERNAL, Map.of("workflow.step", "s", "workflow.step.index", 1, "workflow.step.status", "active")).end();
+            observe.metric("workflow.duration", 1, Map.of("workflow.type", "diagnosis", "business.domain", "transport"));
+            observe.log("gen_ai.agent.a2at.workflow", LogSeverity.INFO, "invalid", Map.of("workflow.id", "wf-1", "workflow.type", "diagnosis", "workflow.status", "running", "agent.state", "running"));
+            assertTrue(spans.getFinishedSpanItems().isEmpty());
+            assertTrue(metrics.collectAllMetrics().isEmpty());
+            assertTrue(logs.getFinishedLogRecordItems().isEmpty());
+        }
+    }
+}
