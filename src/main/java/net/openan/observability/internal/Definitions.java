@@ -33,7 +33,7 @@ public final class Definitions {
     public static final Map<String, NamedSignal> NAMED_TRACES = CONFIGURATION.traces();
     public static final Map<String, NamedSignal> NAMED_LOGS = CONFIGURATION.namedLogs();
     public static final Map<String, String> CONFIGURATION_VERSIONS = CONFIGURATION.versions();
-    private static final Map<String, Attribute> NATIVE_A2A_ATTRIBUTES = Map.ofEntries(
+    private static final Map<String, Attribute> A2A_PROTOCOL_ATTRIBUTES = Map.ofEntries(
         nativeAttribute("operation.name", A2A_PREFIX + "operation.name", "SM", AttributeType.STRING),
         nativeAttribute("task_id", A2A_PREFIX + "task_id", "S", AttributeType.STRING),
         nativeAttribute("context_id", A2A_PREFIX + "context_id", "S", AttributeType.STRING),
@@ -71,7 +71,7 @@ public final class Definitions {
     public static String shortName(String name) { return name.startsWith(PREFIX) ? name.substring(PREFIX.length()) : name; }
     public static Attribute attribute(String key) {
         Attribute configured = CONFIGURATION.attributes().get(key);
-        return configured == null ? NATIVE_A2A_ATTRIBUTES.get(key) : configured;
+        return configured == null ? A2A_PROTOCOL_ATTRIBUTES.get(key) : configured;
     }
     public static String attributeName(String key) {
         Attribute attribute = attribute(key);
