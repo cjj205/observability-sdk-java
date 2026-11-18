@@ -32,7 +32,6 @@ public final class Observability {
         logger = otel.getLogsBridge().get("a2at.observability");
         Meter meter = otel.getMeter("a2at.observability");
         Definitions.METRICS.forEach((name, metric) -> registerMetric(meter, metric.name(), metric));
-        Definitions.A2A_METRICS.forEach((name, metric) -> registerMetric(meter, name, metric));
     }
     private void registerMetric(Meter meter, String name, Definitions.Metric metric) {
         if (metric.histogram()) histograms.put(name, meter.histogramBuilder(name).setUnit(metric.unit()).build());
@@ -76,9 +75,9 @@ public final class Observability {
         try {
             if (id == null || value == null) throw new IllegalArgumentException();
             String name = Definitions.shortName(id);
-            boolean a2a = Definitions.A2A_METRICS.containsKey(id);
-            Definitions.Metric definition = a2a ? Definitions.A2A_METRICS.get(id) : Definitions.METRICS.get(name);
-            if (definition == null) throw new IllegalArgumentException();
+            Definitions.Metric definition = Definitions.METRICS.get(name);
+            if (definition == null || id.startsWith(Definitions.PREFIX) && definition.a2a()) throw new IllegalArgumentException();
+            boolean a2a = definition.a2a();
             double number = value.doubleValue();
             if (!Double.isFinite(number) || number < 0
                 || value instanceof java.math.BigDecimal decimal && decimal.signum() < 0
@@ -96,7 +95,7 @@ public final class Observability {
                     if (requiredValue == null || requiredValue instanceof String text && text.isBlank()) throw new IllegalArgumentException();
                 }
             }
-            String instrumentName = a2a ? id : definition.name();
+            String instrumentName = definition.name();
             if (definition.histogram()) histograms.get(instrumentName).record(number, attrs);
             else counters.get(instrumentName).add(value.longValue(), attrs);
         } catch (RuntimeException e) { DIAGNOSTICS.warning("Observation metric rejected"); }

@@ -15,7 +15,7 @@ public final class Definitions {
     public static final String MESSAGE_LOG = PREFIX + "message";
     public enum AttributeType { STRING, INTEGER, STRING_ARRAY }
     public record Attribute(String name, String signals, AttributeType type, Set<String> values) {}
-    public record Metric(String name, boolean histogram, boolean integer, String unit, Set<String> dimensions, Set<String> requiredDimensions) {}
+    public record Metric(String name, boolean histogram, boolean integer, boolean a2a, String unit, Set<String> dimensions, Set<String> requiredDimensions) {}
     public record Signal(String extension, Set<String> attributes, Set<String> required) {}
     public record NamedSignal(String name, String namePrefix, Signal signal) {
         public boolean matches(String candidate) { return name != null ? name.equals(candidate) : candidate.startsWith(namePrefix) && candidate.length() > namePrefix.length(); }
@@ -48,13 +48,6 @@ public final class Definitions {
         nativeAttribute("error.type", "error.type", "SM", AttributeType.STRING),
         nativeAttribute("gen_ai.system", "gen_ai.system", "M", AttributeType.STRING));
     public static final Map<String, Metric> METRICS = CONFIGURATION.metrics();
-    public static final String A2A_OPERATION_DURATION = "gen_ai.client.operation.duration";
-    public static final String A2A_STREAMING_DURATION = A2A_PREFIX + "streaming.duration";
-    private static final Metric A2A_DURATION = new Metric(A2A_OPERATION_DURATION, true, false, "s",
-        Set.of("operation.name", "gen_ai.system", "error.type"), Set.of("operation.name"));
-    public static final Map<String, Metric> A2A_METRICS = Map.of(
-        A2A_OPERATION_DURATION, A2A_DURATION, A2A_STREAMING_DURATION, A2A_DURATION);
-
     public static Signal span(String name, Signal extension) {
         if (extension == null) return STREAM_EVENT.equals(name) ? A2A_EVENT : A2A_SPAN;
         if (!MESSAGE_SPAN.equals(name) && !STREAM_SPAN.equals(name)) throw new IllegalArgumentException();

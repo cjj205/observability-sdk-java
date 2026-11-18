@@ -142,12 +142,7 @@ Span 可接收 `operation.name`、`task_id`、`context_id`、`message_id`、`Rol
 
 A2A 自定义属性可用短名或 `gen_ai.agent.a2a.` 全名。`error.type` 和 `gen_ai.system` 使用原名。Span 名按表中原样导出。
 
-| Metric ID | 类型 | 单位 | 维度 |
-|---|---|---|---|
-| `gen_ai.client.operation.duration` | Histogram | `s` | `gen_ai.agent.a2a.operation.name`、`gen_ai.system`、`error.type` |
-| `gen_ai.agent.a2a.streaming.duration` | Histogram | `s` | `gen_ai.agent.a2a.operation.name`、`gen_ai.system`、`error.type` |
-
-两项 Metric 都要求提供 `operation.name`，SDK 将 `gen_ai.system` 设为 `A2A`。失败时可另传 `error.type`。使用与快速开始相同的 Collector 配置和环境变量运行样例。可在 Collector 输出中按 `service.name=a2a-demo` 查看 5 个 Span 和 2 项 Histogram。
+两项 A2A Metric 与 A2A-T Metric 统一在 `a2at.yaml` 的 `metrics` 中维护，见下方统一 Metric 表。两项 A2A Metric 都要求提供 `operation.name`，SDK 将 `gen_ai.system` 设为 `A2A`。失败时可另传 `error.type`。使用与快速开始相同的 Collector 配置和环境变量运行样例。可在 Collector 输出中按 `service.name=a2a-demo` 查看 5 个 Span 和 2 项 Histogram。
 
 ```powershell
 mvn -B -ntp -Pexamples test-compile exec:java '-Dexec.classpathScope=test' '-Dexec.mainClass=net.openan.observability.example.A2AExample' '-Dexec.cleanupDaemonThreads=false'
@@ -166,22 +161,24 @@ mvn -B -ntp -Pexamples test-compile exec:java '-Dexec.classpathScope=test' '-Dex
 
 轮次属性传整数，其余属性传字符串。除 `extension.name` 外，SDK 不限制属性字符串取值，也不对其进行大小写转换。
 
-### A2A-T Metric
+### Metric
 
-指标定义由 `src/main/resources/observability/a2at.yaml` 加载，当前版本为 `1.0.0`。SDK 先校验指标名称，再按该指标的 `attributes.allowed` 校验属性白名单，并检查 `attributes.required`。例如 `task.duration` 和 `task.count` 允许 `task.type`、`task.object`，其中 `task.type` 必填。
+指标定义由版本化 YAML 加载；A2A 与 A2A-T 指标均位于 `src/main/resources/observability/a2at.yaml`，当前版本为 `1.0.0`。SDK 先校验指标名称，再按该指标的 `attributes.allowed` 校验属性白名单，并检查 `attributes.required`。例如 `task.duration` 和 `task.count` 允许 `task.type`、`task.object`，其中 `task.type` 必填。
 
 三份 YAML 的顶层 `attributes` 统一定义属性的导出名和类型：`otel_name` 是写入 OpenTelemetry 的键，`type` 可为 `string`、`integer` 或 `string_array`。只有 `extension.name` 可以声明 `values`，用于选择 Task-T、Negotiation-T、Notification-T、Authorization-T 对应的二级白名单；其余属性只校验名称、所属信号的允许范围、必填性和数据类型，不限制字符串取值。
 
-| 指标 ID | 类型 | 单位 | 允许的维度 |
-|---|---|---|---|
-| `task.duration` | Histogram | `ms` | `task.type`（必填且非空白）、`task.object` |
-| `task.count` | Counter | — | `task.type`（必填且非空白）、`task.object` |
-| `negotiation.rounds` | Histogram | `{round}` | `negotiation.id`、`negotiation.result` |
-| `negotiation.count` | Counter | — | `negotiation.result` |
-| `notification.count` | Counter | — | `notification.topic` |
-| `authorization.preauthorize.count` | Counter | — | `authorization.policy.operation.type` |
-| `authorization.preauthorize.duration` | Histogram | `ms` | `authorization.policy.operation.type` |
-| `authorization.execute.count` | Counter | — | `authorization.policy.operation.type` |
+| 信号分类 | 指标 ID | 类型 | 单位 | 允许的维度 |
+|---|---|---|---|---|
+| A2A | `gen_ai.client.operation.duration` | Histogram | `s` | `operation.name`（必填）、`gen_ai.system`、`error.type` |
+| A2A | `gen_ai.agent.a2a.streaming.duration` | Histogram | `s` | `operation.name`（必填）、`gen_ai.system`、`error.type` |
+| A2A-T | `task.duration` | Histogram | `ms` | `task.type`（必填且非空白）、`task.object` |
+| A2A-T | `task.count` | Counter | — | `task.type`（必填且非空白）、`task.object` |
+| A2A-T | `negotiation.rounds` | Histogram | `{round}` | `negotiation.id`、`negotiation.result` |
+| A2A-T | `negotiation.count` | Counter | — | `negotiation.result` |
+| A2A-T | `notification.count` | Counter | — | `notification.topic` |
+| A2A-T | `authorization.preauthorize.count` | Counter | — | `authorization.policy.operation.type` |
+| A2A-T | `authorization.preauthorize.duration` | Histogram | `ms` | `authorization.policy.operation.type` |
+| A2A-T | `authorization.execute.count` | Counter | — | `authorization.policy.operation.type` |
 
 Histogram 接收单次测量值，由 OTel 聚合。Counter 接收单次计数增量。测量值须为有限非负数，轮次和计数传整数。表中未标必填的维度可省略。
 

@@ -43,7 +43,10 @@ final class SignalConfigurationLoader {
                 Map<String, Object> metricAttributes = map(item.get("attributes"), resource + ".metrics." + entry.getKey() + ".attributes");
                 boolean histogram = string(item.get("type"), entry.getKey() + ".type").equals("histogram");
                 boolean integer = string(item.get("value_type"), entry.getKey() + ".value_type").equals("integer");
-                Definitions.Metric metric = new Definitions.Metric(string(item.get("otel_name"), entry.getKey() + ".otel_name"), histogram, integer, text(item.get("unit"), entry.getKey() + ".unit"),
+                boolean a2a = optionalString(item.get("protocol"), entry.getKey() + ".protocol") != null
+                    && string(item.get("protocol"), entry.getKey() + ".protocol").equals("a2a");
+                if (item.containsKey("protocol") && !a2a) throw new IllegalStateException("Unsupported metric protocol at " + entry.getKey() + ".protocol");
+                Definitions.Metric metric = new Definitions.Metric(string(item.get("otel_name"), entry.getKey() + ".otel_name"), histogram, integer, a2a, text(item.get("unit"), entry.getKey() + ".unit"),
                     strings(metricAttributes.get("allowed"), entry.getKey() + ".attributes.allowed"), strings(metricAttributes.get("required"), entry.getKey() + ".attributes.required"));
                 if (metrics.putIfAbsent(entry.getKey(), metric) != null) throw new IllegalStateException("Duplicate metric: " + entry.getKey());
             }
