@@ -56,7 +56,7 @@ class ObservabilityTest {
         assertEquals(1, metric("task.count").getLongSumData().getPoints().iterator().next().getValue());
     }
     @Test void bundledSignalConfigurationHasVersionsAndMetricAttributeRules() {
-        assertEquals("1.1.0", Definitions.CONFIGURATION_VERSIONS.get("a2at"));
+        assertEquals("1.0.0", Definitions.CONFIGURATION_VERSIONS.get("a2at"));
         assertEquals("1.0.0", Definitions.CONFIGURATION_VERSIONS.get("agent"));
         assertEquals("1.0.0", Definitions.CONFIGURATION_VERSIONS.get("workflow"));
         observe.metric("task.duration", 1, Map.of("task.type", "diagnosis", "task.object", "incident"));
