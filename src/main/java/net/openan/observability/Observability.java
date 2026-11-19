@@ -20,7 +20,11 @@ import io.opentelemetry.context.Context;
 import java.util.HashMap;
 import java.util.Map;
 
-/** Receives measurements supplied by instrumented SDKs. */
+/**
+ * Records A2A-T, workflow, and agent signals through the configured OpenTelemetry providers.
+ *
+ * <p>Invalid signal names or attributes are rejected locally and reported through the SDK diagnostics logger.
+ */
 public final class Observability {
     private static final java.util.logging.Logger DIAGNOSTICS = java.util.logging.Logger.getLogger(Observability.class.getName());
     private final Tracer tracer;
@@ -37,8 +41,17 @@ public final class Observability {
         if (metric.histogram()) histograms.put(name, meter.histogramBuilder(name).setUnit(metric.unit()).build());
         else counters.put(name, meter.counterBuilder(name).setUnit(metric.unit()).build());
     }
+    /**
+     * Starts a trace span with the current context as its parent.
+     *
+     * @return a span handle; it is safe to close even when the requested signal is rejected
+     */
     public ObservationSpan trace(String name, SignalKind kind, Map<String, ?> attributes) { return trace(name, kind, attributes, null); }
-    /** The explicit span supplies a parent, or a Link for message/stream-event. */
+    /**
+     * Starts a trace span using an explicit parent. Stream-event signals add the parent as a span link.
+     *
+     * @return a span handle; it is safe to close even when the requested signal is rejected
+     */
     public ObservationSpan trace(String name, SignalKind kind, Map<String, ?> attributes, ObservationSpan parent) {
         Context context = parent == null ? Context.current() : parent.context();
         try {
@@ -71,6 +84,7 @@ public final class Observability {
             return ObservationSpan.noop();
         }
     }
+    /** Records a configured counter or histogram value. Invalid values and dimensions are discarded. */
     public void metric(String id, Number value, Map<String, ?> attributes) {
         try {
             if (id == null || value == null) throw new IllegalArgumentException();
@@ -100,7 +114,9 @@ public final class Observability {
             else counters.get(instrumentName).add(value.longValue(), attrs);
         } catch (RuntimeException e) { DIAGNOSTICS.warning("Observation metric rejected"); }
     }
+    /** Emits a log record using the current context. */
     public void log(String name, LogSeverity severity, String body, Map<String, ?> attributes) { log(name, severity, body, attributes, null); }
+    /** Emits a log record associated with the supplied span. */
     public void log(String name, LogSeverity severity, String body, Map<String, ?> attributes, ObservationSpan span) {
         try {
             if (severity == null || body == null) throw new IllegalArgumentException();

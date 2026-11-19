@@ -45,6 +45,25 @@ jobs:
           OTEL_EXPORTER_OTLP_ENDPOINT: http://127.0.0.1:4318
         run: mvn -B -ntp package exec:java '-Dexec.mainClass=net.openan.observability.consumer.ConsumerSmoke' '-Dexec.args=ci' '-Dexec.cleanupDaemonThreads=false'
 
-      - name: Show Collector output
+      - name: Assert Collector received all signal types
+        run: |
+          docker logs otelcol 2>&1 | tee collector.log
+          grep -F 'sdk-consumer-ci' collector.log
+          grep -F 'message/send' collector.log
+          grep -F 'gen_ai.agent.a2at.task.duration' collector.log
+          grep -F 'gen_ai.agent.a2at.message' collector.log
+
+      - name: Show Collector output on failure
         if: always()
-        run: docker logs otelcol || true
+        run: docker logs otelcol 2>&1 | tee collector.log || true
+
+      - name: Upload verification artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: verification-artifacts
+          path: |
+            target/surefire-reports/
+            collector.log
+          if-no-files-found: warn
+          retention-days: 7

@@ -191,7 +191,35 @@ Change the relevant YAML file and increment its `version`. Update at the same ti
 
 YAML is currently packaged inside the JAR. A definition change requires a new SDK build and release; an already running application does not reload it.
 
-## 7. Tests and examples
+## 7. Compatibility and versioning
+
+- Versions use semantic versioning. A patch version is for compatible fixes, a minor version for compatible capabilities, and a major version for breaking public API changes.
+- Public classes, methods, enum values, and builder methods in `net.openan.observability` are public API. `net.openan.observability.internal` is outside the compatibility commitment.
+- After the first formal release, use its Maven Central artifact as the binary and source compatibility baseline. Check later changes with:
+
+```powershell
+mvn -B -ntp -Papi-compatibility '-Dapi.baseline.version=0.1.0' verify
+```
+
+- Before removing or replacing a public API, mark it `@Deprecated` in a minor release, describe the replacement, and retain it through at least the next major version.
+- Adding a YAML attribute, signal, or optional dimension is normally compatible. Removing or tightening an existing name, type, required attribute, allowlist, or metric dimension is a breaking change.
+
+## 8. Quality checks and release rehearsal
+
+`mvn verify` runs the dependency upper-bound check, basic source-hygiene checks, unit tests, and source/Javadoc artifact generation. The hygiene check rejects tabs, missing final newlines, and redundant imports without reformatting the existing codebase.
+
+The repository also contains a manually dispatched **Release verification** workflow. It validates the requested semantic version, required Central and GPG secrets, creates signed artifacts, and verifies their signatures. It runs `verify` only: it does not create a tag, upload artifacts, or publish a release.
+
+For local release preparation without a signing key, run:
+
+```powershell
+mvn -B -ntp -Pexamples -Drevision=0.1.0-rc.1 clean verify
+mvn -B -ntp -DskipTests -Drevision=0.1.0-rc.1 verify org.cyclonedx:cyclonedx-maven-plugin:2.9.1:makeAggregateBom
+```
+
+The generated SBOM files are `target/bom.json` and `target/bom.xml`. The CI workflow also runs an independent Maven consumer against a Collector and checks that the Collector output contains the expected trace, metric, and log signals.
+
+## 9. Tests and examples
 
 Run all tests and compile the examples from the repository root:
 

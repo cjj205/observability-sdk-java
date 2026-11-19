@@ -10,12 +10,15 @@ public final class TraceContextPropagation {
     /** Sets one propagation header on a caller-owned carrier. */
     @FunctionalInterface
     public interface Setter<C> {
+        /** Writes one W3C propagation header to the caller-owned carrier. */
         void set(C carrier, String key, String value);
     }
 
     /** Reads propagation headers from a caller-owned carrier. */
     public interface Getter<C> {
+        /** Returns header names available on the caller-owned carrier. */
         Iterable<String> keys(C carrier);
+        /** Returns a propagation header value, or {@code null} when it is absent. */
         String get(C carrier, String key);
     }
 

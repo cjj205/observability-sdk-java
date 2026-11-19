@@ -14,7 +14,11 @@ import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.Map;
 
-/** Explicit builder values take precedence over environment variables. */
+/**
+ * OTLP export configuration.
+ *
+ * <p>Explicit builder values take precedence over the corresponding OpenTelemetry environment variables.
+ */
 public final class SdkConfig {
     final URI endpoint;
     final String protocol;
@@ -163,10 +167,12 @@ public final class SdkConfig {
         }
     }
 
+    /** Creates an empty builder that can be combined with OpenTelemetry environment variables. */
     public static Builder builder() {
         return new Builder();
     }
 
+    /** Builder for {@link SdkConfig}. */
     public static final class Builder {
         private String endpoint;
         private String protocol;
@@ -176,16 +182,19 @@ public final class SdkConfig {
         private Map<String, String> headers;
         private Path trustedCertificate;
 
+        /** Sets the Collector base endpoint, for example {@code http://localhost:4317}. */
         public Builder endpoint(String value) {
             endpoint = value;
             return this;
         }
 
+        /** Sets {@code grpc} or {@code http/protobuf}. */
         public Builder protocol(String value) {
             protocol = value;
             return this;
         }
 
+        /** Sets the OpenTelemetry {@code service.name} resource attribute. */
         public Builder serviceName(String value) {
             if (value == null || value.isBlank()) {
                 throw new IllegalArgumentException("serviceName is empty");
@@ -194,6 +203,7 @@ public final class SdkConfig {
             return this;
         }
 
+        /** Sets the periodic metric export interval. */
         public Builder metricInterval(Duration value) {
             metricInterval = value;
             return this;
@@ -235,6 +245,7 @@ public final class SdkConfig {
             return this;
         }
 
+        /** Validates the builder and environment values, then creates immutable SDK configuration. */
         public SdkConfig build() {
             return new SdkConfig(this, System.getenv());
         }
