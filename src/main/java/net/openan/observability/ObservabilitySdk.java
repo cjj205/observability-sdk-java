@@ -41,6 +41,11 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
 
+/**
+ * Owns the OpenTelemetry providers used by this SDK.
+ *
+ * <p>Create one instance for an application process and close it during application shutdown.
+ */
 public final class ObservabilitySdk implements AutoCloseable {
     private final OpenTelemetrySdk otel;
     private final Observability observe;
@@ -54,6 +59,7 @@ public final class ObservabilitySdk implements AutoCloseable {
         this.exportFailures = exportFailures;
     }
 
+    /** Starts the SDK and configures OTLP exporters from the supplied configuration. */
     public static ObservabilitySdk start(SdkConfig config) {
         if (config == null) {
             throw new IllegalArgumentException("config is required");
@@ -145,13 +151,16 @@ public final class ObservabilitySdk implements AutoCloseable {
         return build.apply(builder);
     }
 
+    /** Returns the signal recording facade associated with this SDK instance. */
     public Observability observe() {
         return observe;
     }
 
     /**
-     * Waits for pending signals to be exported. Returns false if a provider does not complete within the caller's
-     * timeout or if an exporter reports a failed export since the previous flush.
+     * Waits for pending signals to be exported.
+     *
+     * @return {@code false} when a provider exceeds the supplied timeout or an exporter has failed since the
+     * previous flush
      */
     public synchronized boolean flush(long timeout, TimeUnit unit) {
         long previousFailureCount = reportedExportFailures.get();
@@ -165,6 +174,7 @@ public final class ObservabilitySdk implements AutoCloseable {
         return result.isSuccess() && currentFailureCount == previousFailureCount;
     }
 
+    /** Closes all providers and releases exporter resources. This operation is idempotent. */
     @Override
     public void close() {
         if (closed.compareAndSet(false, true)) {

@@ -14,6 +14,11 @@ jobs:
     name: Publish Maven artifacts
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout full history
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
       - name: Require a release tag
         shell: bash
         run: |
@@ -21,9 +26,11 @@ jobs:
             echo "Run this workflow from a semantic version tag such as v0.1.0."
             exit 1
           }
-
-      - name: Checkout
-        uses: actions/checkout@v4
+          git fetch origin +refs/heads/main:refs/remotes/origin/main
+          git merge-base --is-ancestor "${GITHUB_SHA}" refs/remotes/origin/main || {
+            echo "Release tags must point to a commit reachable from main."
+            exit 1
+          }
 
       - name: Validate release secrets
         shell: bash
@@ -72,6 +79,14 @@ jobs:
 
       - name: Verify
         run: mvn -B -ntp -Pexamples -Drevision="${GITHUB_REF_NAME#v}" clean verify
+
+      - name: Verify distribution notices
+        shell: bash
+        run: |
+          artifact="target/observability-sdk-${GITHUB_REF_NAME#v}.jar"
+          test -f "${artifact}" || { echo "Missing SDK jar: ${artifact}"; exit 1; }
+          unzip -l "${artifact}" | grep -q 'META-INF/LICENSE' || { echo "LICENSE is missing from ${artifact}"; exit 1; }
+          unzip -l "${artifact}" | grep -q 'META-INF/NOTICE' || { echo "NOTICE is missing from ${artifact}"; exit 1; }
 
       - name: Publish
         env:
