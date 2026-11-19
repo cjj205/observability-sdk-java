@@ -39,6 +39,8 @@ try (var sdk = ObservabilitySdk.start(SdkConfig.builder()
 
 A `false` result from `flush` means that the wait timed out or an export failure was observed since the last call. Handle it in application shutdown, batch jobs, and integration tests.
 
+Use `sdk.setEnabled(false)` to stop creation of new signals at runtime and `sdk.setEnabled(true)` to resume it. A span created before the switch can still be ended and exported.
+
 ## 3. Recording the three signal categories
 
 ### 3.1 A2A / A2A-T
@@ -159,7 +161,7 @@ otelcol --config=examples/collector-config.yaml
 
 This configuration sends all three signals to the Collector debug exporter. In a deployment, replace the exporter in each pipeline with the required storage or forwarding target. `examples/collector-auth-tls-config.yaml` shows a TLS and Bearer Token receiver.
 
-See the [API Reference](api-reference.md#sdkconfig-and-sdkconfigbuilder) for endpoint, request-header, trusted-CA, and export-timeout settings.
+See the [API Reference](api-reference.md#sdkconfig-and-sdkconfigbuilder) for endpoint, request-header, trusted-CA, client-certificate, batch, and export-timeout settings. The SDK supports OTLP gRPC and HTTP/Protobuf; HTTP/JSON is not exposed.
 
 ## 6. Signal definitions and validation
 

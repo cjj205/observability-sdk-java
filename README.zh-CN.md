@@ -174,9 +174,17 @@ try (var scope = TraceContextPropagation.extractToCurrent(requestHeaders, header
 | `metricInterval` | `OTEL_METRIC_EXPORT_INTERVAL` | `60000` 毫秒 |
 | `headers(Map)` / `header(name, value)` | `OTEL_EXPORTER_OTLP_HEADERS` | 不添加请求头 |
 | `trustedCertificate(Path)` | `OTEL_EXPORTER_OTLP_CERTIFICATE` | 系统默认信任库 |
+| `clientCertificate(Path)` + `clientPrivateKey(Path)` | — | 不配置客户端证书 |
 | `exportTimeout(Duration)` | `OTEL_EXPORTER_OTLP_TIMEOUT` | `10000` 毫秒 |
+| `enabled(boolean)` | — | `true` |
+| `spanBatch(BatchConfig)` | — | 队列 `2048`、批大小 `512`、延迟 `5s`、超时 `30s` |
+| `logBatch(BatchConfig)` | — | 队列 `2048`、批大小 `512`、延迟 `1s`、超时 `30s` |
 
-HTTP/Protobuf 填写 Collector 基地址，SDK 自动追加 `/v1/traces`、`/v1/metrics` 和 `/v1/logs`。`https` 启用 TLS；指定 `trustedCertificate` 时 endpoint 必须使用 `https`。认证头由三类 exporter 共用。环境变量中的头按 `key=value,key2=value2` 填写，值使用百分号编码；Builder 中直接传原始值。
+HTTP/Protobuf 填写 Collector 基地址，SDK 自动追加 `/v1/traces`、`/v1/metrics` 和 `/v1/logs`。`https` 启用 TLS；指定受信 CA 或客户端证书时 endpoint 必须使用 `https`。认证头由三类 exporter 共用。环境变量中的头按 `key=value,key2=value2` 填写，值使用百分号编码；Builder 中直接传原始值。当前不支持 OTLP `http/json`。
+
+调用 `setEnabled(false)` 会停止创建新的观测信号，调用 `setEnabled(true)` 恢复；开关前已创建的 Span 仍可结束并导出。关闭时 SDK 会跳过自身的字段校验和 OpenTelemetry API 调用，应用在调用 SDK 前自行创建的对象不在此范围内。
+
+Log4j2 可选模块位于 `observability-sdk-log4j2/`，仅转发包含指定 Marker 的日志。模块从 MDC 读取 `traceId` 和 `spanId`，并映射 Log4j2 级别到 SDK 的日志级别。
 
 ## 示例与验证
 
