@@ -174,9 +174,40 @@ Short attribute names and `gen_ai.agent.a2at.`-prefixed attribute names are both
 | `metricInterval` | `OTEL_METRIC_EXPORT_INTERVAL` | `60000` milliseconds |
 | `headers(Map)` / `header(name, value)` | `OTEL_EXPORTER_OTLP_HEADERS` | No request headers |
 | `trustedCertificate(Path)` | `OTEL_EXPORTER_OTLP_CERTIFICATE` | System trust store |
+| `clientCertificate(Path)` + `clientPrivateKey(Path)` | — | No client certificate |
 | `exportTimeout(Duration)` | `OTEL_EXPORTER_OTLP_TIMEOUT` | `10000` milliseconds |
+| `enabled(boolean)` | — | `true` |
+| `spanBatch(BatchConfig)` | — | queue `2048`, batch `512`, delay `5s`, timeout `30s` |
+| `logBatch(BatchConfig)` | — | queue `2048`, batch `512`, delay `1s`, timeout `30s` |
 
-For HTTP/Protobuf, provide the Collector base address. The SDK appends `/v1/traces`, `/v1/metrics`, and `/v1/logs`. `https` enables TLS; an endpoint must use `https` when `trustedCertificate` is configured. Request headers are shared by all three exporters. Set environment headers as `key=value,key2=value2` and percent-encode values; pass raw values through the builder.
+For HTTP/Protobuf, provide the Collector base address. The SDK appends `/v1/traces`, `/v1/metrics`, and `/v1/logs`. `https` enables TLS; an endpoint must use `https` when a trusted CA or a client certificate is configured. Request headers are shared by all three exporters. Set environment headers as `key=value,key2=value2` and percent-encode values; pass raw values through the builder. OTLP `http/json` is not currently supported.
+
+`setEnabled(false)` disables creation of new telemetry at runtime. Existing spans can still be ended and exported. Use `setEnabled(true)` to resume recording. The SDK skips its own signal validation and OpenTelemetry API calls while disabled; objects created by the calling application before the SDK method is invoked are outside that optimization.
+
+For mutual TLS, provide a client certificate and its paired PEM private key together:
+
+```java
+var config = SdkConfig.builder()
+    .endpoint("https://collector.example:4318")
+    .protocol("http/protobuf")
+    .trustedCertificate(Path.of("collector-ca.pem"))
+    .clientCertificate(Path.of("client-cert.pem"))
+    .clientPrivateKey(Path.of("client-key.pem"))
+    .build();
+```
+
+Tune trace or log buffering only when a deployment has measured queue pressure or export latency:
+
+```java
+var traceBatch = BatchConfig.builder()
+    .maxQueueSize(4096)
+    .maxExportBatchSize(1024)
+    .scheduleDelay(Duration.ofSeconds(2))
+    .exportTimeout(Duration.ofSeconds(15))
+    .build();
+```
+
+The optional Log4j2 bridge is in `observability-sdk-log4j2/`. It forwards only events carrying its configured Marker, maps Log4j2 levels, and uses MDC `traceId` and `spanId` values when no current OpenTelemetry context exists.
 
 ## Examples and verification
 

@@ -27,6 +27,11 @@ public final class SdkConfig {
     final Duration exportTimeout;
     final Map<String, String> headers;
     final byte[] trustedCertificates;
+    final byte[] clientCertificate;
+    final byte[] clientPrivateKey;
+    final boolean enabled;
+    final BatchConfig spanBatch;
+    final BatchConfig logBatch;
 
     private SdkConfig(Builder builder, Map<String, String> env) {
         protocol = select(builder.protocol, env.get("OTEL_EXPORTER_OTLP_PROTOCOL"), "grpc")
@@ -96,6 +101,25 @@ public final class SdkConfig {
             }
             trustedCertificates = readTrustedCertificates(certificatePath);
         }
+
+        String clientCertificatePath = builder.clientCertificate == null ? null : builder.clientCertificate.toString();
+        String clientPrivateKeyPath = builder.clientPrivateKey == null ? null : builder.clientPrivateKey.toString();
+        if ((clientCertificatePath == null) != (clientPrivateKeyPath == null)) {
+            throw new IllegalArgumentException("Client certificate and private key must be configured together");
+        }
+        if (clientCertificatePath == null) {
+            clientCertificate = null;
+            clientPrivateKey = null;
+        } else {
+            if (!"https".equalsIgnoreCase(endpoint.getScheme())) {
+                throw new IllegalArgumentException("Client TLS requires an https endpoint");
+            }
+            clientCertificate = readClientCertificate(clientCertificatePath);
+            clientPrivateKey = readPrivateKey(clientPrivateKeyPath);
+        }
+        enabled = builder.enabled;
+        spanBatch = builder.spanBatch;
+        logBatch = builder.logBatch;
     }
 
     private static String select(String explicit, String environment, String fallback) {
@@ -167,6 +191,36 @@ public final class SdkConfig {
         }
     }
 
+    private static byte[] readClientCertificate(String certificatePath) {
+        try {
+            byte[] certificateBytes = Files.readAllBytes(Path.of(certificatePath));
+            if (!new String(certificateBytes, StandardCharsets.US_ASCII).contains("-----BEGIN CERTIFICATE-----")) {
+                throw new IOException("Client certificate must be PEM");
+            }
+            if (CertificateFactory.getInstance("X.509").generateCertificates(
+                new ByteArrayInputStream(certificateBytes)).isEmpty()) {
+                throw new IOException("No certificates found");
+            }
+            return certificateBytes;
+        } catch (Exception e) {
+            throw new IllegalArgumentException("Invalid OTLP client certificate");
+        }
+    }
+
+    private static byte[] readPrivateKey(String privateKeyPath) {
+        try {
+            byte[] key = Files.readAllBytes(Path.of(privateKeyPath));
+            String pem = new String(key, StandardCharsets.US_ASCII);
+            if (!pem.contains("-----BEGIN ") || !pem.contains("PRIVATE KEY-----")
+                || !pem.contains("-----END ")) {
+                throw new IOException("Private key must be PEM");
+            }
+            return key;
+        } catch (Exception e) {
+            throw new IllegalArgumentException("Invalid OTLP client private key");
+        }
+    }
+
     /** Creates an empty builder that can be combined with OpenTelemetry environment variables. */
     public static Builder builder() {
         return new Builder();
@@ -181,6 +235,11 @@ public final class SdkConfig {
         private Duration exportTimeout;
         private Map<String, String> headers;
         private Path trustedCertificate;
+        private Path clientCertificate;
+        private Path clientPrivateKey;
+        private boolean enabled = true;
+        private BatchConfig spanBatch = BatchConfig.builder().build();
+        private BatchConfig logBatch = BatchConfig.builder().scheduleDelay(Duration.ofSeconds(1)).build();
 
         /** Sets the Collector base endpoint, for example {@code http://localhost:4317}. */
         public Builder endpoint(String value) {
@@ -242,6 +301,37 @@ public final class SdkConfig {
                 throw new IllegalArgumentException("trustedCertificate is required");
             }
             trustedCertificate = value;
+            return this;
+        }
+
+        /** Sets the PEM X.509 client certificate used for mutual TLS. */
+        public Builder clientCertificate(Path value) {
+            if (value == null) throw new IllegalArgumentException("clientCertificate is required");
+            clientCertificate = value;
+            return this;
+        }
+
+        /** Sets the PEM private key paired with {@link #clientCertificate(Path)} for mutual TLS. */
+        public Builder clientPrivateKey(Path value) {
+            if (value == null) throw new IllegalArgumentException("clientPrivateKey is required");
+            clientPrivateKey = value;
+            return this;
+        }
+
+        /** Controls whether recording starts enabled. The setting can later be changed on the SDK instance. */
+        public Builder enabled(boolean value) { enabled = value; return this; }
+
+        /** Sets trace batch queue, batch-size, schedule-delay, and processor-timeout settings. */
+        public Builder spanBatch(BatchConfig value) {
+            if (value == null) throw new IllegalArgumentException("spanBatch is required");
+            spanBatch = value;
+            return this;
+        }
+
+        /** Sets log batch queue, batch-size, schedule-delay, and processor-timeout settings. */
+        public Builder logBatch(BatchConfig value) {
+            if (value == null) throw new IllegalArgumentException("logBatch is required");
+            logBatch = value;
             return this;
         }
 

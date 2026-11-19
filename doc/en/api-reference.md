@@ -48,6 +48,12 @@ Use it before a short-lived process exits.
 
 Closes the OpenTelemetry providers. Try-with-resources is recommended; do not use the SDK afterwards.
 
+### Runtime controls
+
+`setEnabled(boolean)` controls creation of new telemetry, and `isEnabled()` returns its current value. Existing spans can still be ended after disabling.
+
+`CompletableResultCode updateExporters(SdkConfig config)` replaces the OTLP endpoint, protocol, headers, TLS material, and export timeout for all three signals. It builds all replacements and flushes the current providers first. A changed `serviceName`, metric interval, or batch configuration is rejected; start a new SDK instance for those changes.
+
 ## `SdkConfig` and `SdkConfig.Builder`
 
 Create a builder through `SdkConfig.builder()`. Explicit builder values take precedence over their environment variables.
@@ -61,7 +67,11 @@ Create a builder through `SdkConfig.builder()`. Explicit builder values take pre
 | `headers(Map<String,String>)` | `OTEL_EXPORTER_OTLP_HEADERS` | none | Replaces all request headers |
 | `header(String,String)` | `OTEL_EXPORTER_OTLP_HEADERS` | none | Adds a request header; builder headers then take precedence |
 | `trustedCertificate(Path)` | `OTEL_EXPORTER_OTLP_CERTIFICATE` | system trust store | PEM or DER X.509 CA; requires `https` |
+| `clientCertificate(Path)` + `clientPrivateKey(Path)` | — | none | mutual-TLS client certificate and its PEM private key; requires `https` |
 | `exportTimeout(Duration)` | `OTEL_EXPORTER_OTLP_TIMEOUT` | 10 seconds | Timeout for one OTLP export batch; zero means no exporter deadline |
+| `enabled(boolean)` | — | `true` | Initial runtime recording state |
+| `spanBatch(BatchConfig)` | — | 2048 / 512 / 5s / 30s | Trace queue size, batch size, delay, and processor timeout |
+| `logBatch(BatchConfig)` | — | 2048 / 512 / 1s / 30s | Log queue size, batch size, delay, and processor timeout |
 
 `OTEL_EXPORTER_OTLP_HEADERS` is a comma-separated `key=value` string; values must be percent-encoded. Builder-supplied values are raw values.
 
@@ -132,9 +142,11 @@ observe.metric("workflow.duration", 180, Map.of(
 void log(String name, LogSeverity severity, String body, Map<String, ?> attributes)
 void log(String name, LogSeverity severity, String body, Map<String, ?> attributes,
          ObservationSpan span)
+void log(String name, LogSeverity severity, String body, Map<String, ?> attributes,
+         Context context)
 ```
 
-Records a structured log. When `span` is supplied, the log is associated with that span; otherwise the current context is used.
+Records a structured log. When `span` or `context` is supplied, the log is associated with it; otherwise the current context is used.
 
 `LogSeverity` values are `TRACE`, `DEBUG`, `INFO`, `WARN`, `ERROR`, and `FATAL`.
 

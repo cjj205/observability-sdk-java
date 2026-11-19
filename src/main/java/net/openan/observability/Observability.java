@@ -19,6 +19,7 @@ import io.opentelemetry.api.trace.Tracer;
 import io.opentelemetry.context.Context;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Records A2A-T, workflow, and agent signals through the configured OpenTelemetry providers.
@@ -31,7 +32,12 @@ public final class Observability {
     private final Logger logger;
     private final Map<String, DoubleHistogram> histograms = new HashMap<>();
     private final Map<String, LongCounter> counters = new HashMap<>();
+    private final AtomicBoolean enabled;
     Observability(OpenTelemetry otel) {
+        this(otel, new AtomicBoolean(true));
+    }
+    Observability(OpenTelemetry otel, AtomicBoolean enabled) {
+        this.enabled = enabled;
         tracer = otel.getTracer("a2at.observability");
         logger = otel.getLogsBridge().get("a2at.observability");
         Meter meter = otel.getMeter("a2at.observability");
@@ -53,6 +59,7 @@ public final class Observability {
      * @return a span handle; it is safe to close even when the requested signal is rejected
      */
     public ObservationSpan trace(String name, SignalKind kind, Map<String, ?> attributes, ObservationSpan parent) {
+        if (!enabled.get()) return ObservationSpan.noop();
         Context context = parent == null ? Context.current() : parent.context();
         try {
             boolean streamEvent = Definitions.STREAM_EVENT.equals(name);
@@ -86,6 +93,7 @@ public final class Observability {
     }
     /** Records a configured counter or histogram value. Invalid values and dimensions are discarded. */
     public void metric(String id, Number value, Map<String, ?> attributes) {
+        if (!enabled.get()) return;
         try {
             if (id == null || value == null) throw new IllegalArgumentException();
             String name = Definitions.shortName(id);
@@ -115,9 +123,21 @@ public final class Observability {
         } catch (RuntimeException e) { DIAGNOSTICS.warning("Observation metric rejected"); }
     }
     /** Emits a log record using the current context. */
-    public void log(String name, LogSeverity severity, String body, Map<String, ?> attributes) { log(name, severity, body, attributes, null); }
+    public void log(String name, LogSeverity severity, String body, Map<String, ?> attributes) {
+        if (!enabled.get()) return;
+        emitLog(name, severity, body, attributes, Context.current());
+    }
+    /** Emits a log record associated with an explicit OpenTelemetry context. */
+    public void log(String name, LogSeverity severity, String body, Map<String, ?> attributes, Context context) {
+        if (!enabled.get()) return;
+        emitLog(name, severity, body, attributes, context == null ? Context.current() : context);
+    }
     /** Emits a log record associated with the supplied span. */
     public void log(String name, LogSeverity severity, String body, Map<String, ?> attributes, ObservationSpan span) {
+        if (!enabled.get()) return;
+        emitLog(name, severity, body, attributes, span == null ? Context.current() : span.context());
+    }
+    private void emitLog(String name, LogSeverity severity, String body, Map<String, ?> attributes, Context context) {
         try {
             if (severity == null || body == null) throw new IllegalArgumentException();
             Definitions.Signal definition = Definitions.MESSAGE_LOG.equals(name)
@@ -125,7 +145,7 @@ public final class Observability {
             if (definition == null) throw new IllegalArgumentException();
             Attributes attrs = AttributesConverter.convertSignal(attributes, 'L', definition, true);
             logger.logRecordBuilder().setEventName(name).setSeverity(Severity.valueOf(severity.name()))
-                .setBody(AttributesConverter.clean(body)).setAllAttributes(attrs).setContext(span == null ? Context.current() : span.context()).emit();
+                .setBody(AttributesConverter.clean(body)).setAllAttributes(attrs).setContext(context).emit();
         } catch (RuntimeException e) { DIAGNOSTICS.warning("Observation log rejected"); }
     }
 }

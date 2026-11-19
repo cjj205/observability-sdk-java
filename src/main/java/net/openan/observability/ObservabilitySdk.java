@@ -52,11 +52,24 @@ public final class ObservabilitySdk implements AutoCloseable {
     private final AtomicLong exportFailures;
     private final AtomicLong reportedExportFailures = new AtomicLong();
     private final AtomicBoolean closed = new AtomicBoolean();
+    private final AtomicBoolean enabled;
+    private final AtomicBoolean reconfiguring = new AtomicBoolean();
+    private final TrackingSpanExporter spanExporter;
+    private final TrackingMetricExporter metricExporter;
+    private final TrackingLogRecordExporter logExporter;
+    private final SdkConfig providerConfig;
 
-    private ObservabilitySdk(OpenTelemetrySdk otel, AtomicLong exportFailures) {
+    private ObservabilitySdk(OpenTelemetrySdk otel, AtomicLong exportFailures, boolean enabled,
+        TrackingSpanExporter spanExporter, TrackingMetricExporter metricExporter, TrackingLogRecordExporter logExporter,
+        SdkConfig providerConfig) {
         this.otel = otel;
-        this.observe = new Observability(otel);
+        this.enabled = new AtomicBoolean(enabled);
+        this.observe = new Observability(otel, this.enabled);
         this.exportFailures = exportFailures;
+        this.spanExporter = spanExporter;
+        this.metricExporter = metricExporter;
+        this.logExporter = logExporter;
+        this.providerConfig = providerConfig;
     }
 
     /** Starts the SDK and configures OTLP exporters from the supplied configuration. */
@@ -76,18 +89,21 @@ public final class ObservabilitySdk implements AutoCloseable {
                 (builder, header) -> builder.addHeader(header.getKey(), header.getValue()),
                 OtlpGrpcSpanExporterBuilder::setTimeout,
                 OtlpGrpcSpanExporterBuilder::setTrustedCertificates,
+                OtlpGrpcSpanExporterBuilder::setClientTls,
                 OtlpGrpcSpanExporterBuilder::build);
             metrics = configureExporter(
                 OtlpGrpcMetricExporter.builder().setEndpoint(endpoint), config,
                 (builder, header) -> builder.addHeader(header.getKey(), header.getValue()),
                 OtlpGrpcMetricExporterBuilder::setTimeout,
                 OtlpGrpcMetricExporterBuilder::setTrustedCertificates,
+                OtlpGrpcMetricExporterBuilder::setClientTls,
                 OtlpGrpcMetricExporterBuilder::build);
             logs = configureExporter(
                 OtlpGrpcLogRecordExporter.builder().setEndpoint(endpoint), config,
                 (builder, header) -> builder.addHeader(header.getKey(), header.getValue()),
                 OtlpGrpcLogRecordExporterBuilder::setTimeout,
                 OtlpGrpcLogRecordExporterBuilder::setTrustedCertificates,
+                OtlpGrpcLogRecordExporterBuilder::setClientTls,
                 OtlpGrpcLogRecordExporterBuilder::build);
         } else {
             spans = configureExporter(
@@ -95,46 +111,93 @@ public final class ObservabilitySdk implements AutoCloseable {
                 (builder, header) -> builder.addHeader(header.getKey(), header.getValue()),
                 OtlpHttpSpanExporterBuilder::setTimeout,
                 OtlpHttpSpanExporterBuilder::setTrustedCertificates,
+                OtlpHttpSpanExporterBuilder::setClientTls,
                 OtlpHttpSpanExporterBuilder::build);
             metrics = configureExporter(
                 OtlpHttpMetricExporter.builder().setEndpoint(endpoint + "/v1/metrics"), config,
                 (builder, header) -> builder.addHeader(header.getKey(), header.getValue()),
                 OtlpHttpMetricExporterBuilder::setTimeout,
                 OtlpHttpMetricExporterBuilder::setTrustedCertificates,
+                OtlpHttpMetricExporterBuilder::setClientTls,
                 OtlpHttpMetricExporterBuilder::build);
             logs = configureExporter(
                 OtlpHttpLogRecordExporter.builder().setEndpoint(endpoint + "/v1/logs"), config,
                 (builder, header) -> builder.addHeader(header.getKey(), header.getValue()),
                 OtlpHttpLogRecordExporterBuilder::setTimeout,
                 OtlpHttpLogRecordExporterBuilder::setTrustedCertificates,
+                OtlpHttpLogRecordExporterBuilder::setClientTls,
                 OtlpHttpLogRecordExporterBuilder::build);
         }
 
-        spans = new TrackingSpanExporter(spans, exportFailures);
-        metrics = new TrackingMetricExporter(metrics, exportFailures);
-        logs = new TrackingLogRecordExporter(logs, exportFailures);
+        TrackingSpanExporter trackingSpans = new TrackingSpanExporter(spans, exportFailures);
+        TrackingMetricExporter trackingMetrics = new TrackingMetricExporter(metrics, exportFailures);
+        TrackingLogRecordExporter trackingLogs = new TrackingLogRecordExporter(logs, exportFailures);
 
         Resource resource = Resource.getDefault().toBuilder()
             .put(AttributeKey.stringKey("service.name"), config.serviceName)
             .build();
         SdkTracerProvider tracer = SdkTracerProvider.builder()
             .setResource(resource)
-            .addSpanProcessor(BatchSpanProcessor.builder(spans).build())
+            .addSpanProcessor(BatchSpanProcessor.builder(trackingSpans)
+                .setMaxQueueSize(config.spanBatch.maxQueueSize)
+                .setMaxExportBatchSize(config.spanBatch.maxExportBatchSize)
+                .setScheduleDelay(config.spanBatch.scheduleDelay)
+                .setExporterTimeout(config.spanBatch.exportTimeout)
+                .build())
             .build();
         SdkMeterProvider meter = SdkMeterProvider.builder()
             .setResource(resource)
-            .registerMetricReader(PeriodicMetricReader.builder(metrics).setInterval(config.metricInterval).build())
+            .registerMetricReader(PeriodicMetricReader.builder(trackingMetrics).setInterval(config.metricInterval).build())
             .build();
         SdkLoggerProvider logger = SdkLoggerProvider.builder()
             .setResource(resource)
-            .addLogRecordProcessor(BatchLogRecordProcessor.builder(logs).build())
+            .addLogRecordProcessor(BatchLogRecordProcessor.builder(trackingLogs)
+                .setMaxQueueSize(config.logBatch.maxQueueSize)
+                .setMaxExportBatchSize(config.logBatch.maxExportBatchSize)
+                .setScheduleDelay(config.logBatch.scheduleDelay)
+                .setExporterTimeout(config.logBatch.exportTimeout)
+                .build())
             .build();
         return new ObservabilitySdk(OpenTelemetrySdk.builder()
             .setTracerProvider(tracer)
             .setMeterProvider(meter)
             .setLoggerProvider(logger)
-            .build(), exportFailures);
+            .build(), exportFailures, config.enabled, trackingSpans, trackingMetrics, trackingLogs, config);
     }
+
+    private static Exporters buildExporters(SdkConfig config) {
+        String endpoint = config.endpoint.toString().replaceAll("/+$", "");
+        if (config.protocol.equals("grpc")) {
+            return new Exporters(
+                configureExporter(OtlpGrpcSpanExporter.builder().setEndpoint(endpoint), config,
+                    (builder, header) -> builder.addHeader(header.getKey(), header.getValue()),
+                    OtlpGrpcSpanExporterBuilder::setTimeout, OtlpGrpcSpanExporterBuilder::setTrustedCertificates,
+                    OtlpGrpcSpanExporterBuilder::setClientTls, OtlpGrpcSpanExporterBuilder::build),
+                configureExporter(OtlpGrpcMetricExporter.builder().setEndpoint(endpoint), config,
+                    (builder, header) -> builder.addHeader(header.getKey(), header.getValue()),
+                    OtlpGrpcMetricExporterBuilder::setTimeout, OtlpGrpcMetricExporterBuilder::setTrustedCertificates,
+                    OtlpGrpcMetricExporterBuilder::setClientTls, OtlpGrpcMetricExporterBuilder::build),
+                configureExporter(OtlpGrpcLogRecordExporter.builder().setEndpoint(endpoint), config,
+                    (builder, header) -> builder.addHeader(header.getKey(), header.getValue()),
+                    OtlpGrpcLogRecordExporterBuilder::setTimeout, OtlpGrpcLogRecordExporterBuilder::setTrustedCertificates,
+                    OtlpGrpcLogRecordExporterBuilder::setClientTls, OtlpGrpcLogRecordExporterBuilder::build));
+        }
+        return new Exporters(
+            configureExporter(OtlpHttpSpanExporter.builder().setEndpoint(endpoint + "/v1/traces"), config,
+                (builder, header) -> builder.addHeader(header.getKey(), header.getValue()),
+                OtlpHttpSpanExporterBuilder::setTimeout, OtlpHttpSpanExporterBuilder::setTrustedCertificates,
+                OtlpHttpSpanExporterBuilder::setClientTls, OtlpHttpSpanExporterBuilder::build),
+            configureExporter(OtlpHttpMetricExporter.builder().setEndpoint(endpoint + "/v1/metrics"), config,
+                (builder, header) -> builder.addHeader(header.getKey(), header.getValue()),
+                OtlpHttpMetricExporterBuilder::setTimeout, OtlpHttpMetricExporterBuilder::setTrustedCertificates,
+                OtlpHttpMetricExporterBuilder::setClientTls, OtlpHttpMetricExporterBuilder::build),
+            configureExporter(OtlpHttpLogRecordExporter.builder().setEndpoint(endpoint + "/v1/logs"), config,
+                (builder, header) -> builder.addHeader(header.getKey(), header.getValue()),
+                OtlpHttpLogRecordExporterBuilder::setTimeout, OtlpHttpLogRecordExporterBuilder::setTrustedCertificates,
+                OtlpHttpLogRecordExporterBuilder::setClientTls, OtlpHttpLogRecordExporterBuilder::build));
+    }
+
+    private record Exporters(SpanExporter spans, MetricExporter metrics, LogRecordExporter logs) {}
 
     private static <B, E> E configureExporter(
         B builder,
@@ -142,18 +205,104 @@ public final class ObservabilitySdk implements AutoCloseable {
         BiConsumer<B, Map.Entry<String, String>> addHeader,
         BiConsumer<B, Duration> setTimeout,
         BiConsumer<B, byte[]> setTrustedCertificates,
+        ClientTlsConfigurer<B> setClientTls,
         Function<B, E> build) {
         config.headers.entrySet().forEach(entry -> addHeader.accept(builder, entry));
         setTimeout.accept(builder, config.exportTimeout);
         if (config.trustedCertificates != null) {
             setTrustedCertificates.accept(builder, config.trustedCertificates.clone());
         }
+        if (config.clientCertificate != null) {
+            setClientTls.configure(builder, config.clientPrivateKey.clone(), config.clientCertificate.clone());
+        }
         return build.apply(builder);
+    }
+
+    @FunctionalInterface
+    private interface ClientTlsConfigurer<B> {
+        void configure(B builder, byte[] privateKey, byte[] certificate);
     }
 
     /** Returns the signal recording facade associated with this SDK instance. */
     public Observability observe() {
         return observe;
+    }
+
+    /** Enables or disables creation of new trace, metric, and log records. */
+    public void setEnabled(boolean value) {
+        enabled.set(value);
+    }
+
+    /** Returns whether creation of new telemetry is enabled. */
+    public boolean isEnabled() {
+        return enabled.get();
+    }
+
+    /**
+     * Replaces the OTLP exporters used by existing trace, metric, and log pipelines.
+     *
+     * <p>The resource identity, metric interval, and batch processor settings cannot change on a running
+     * provider. Build a new SDK instance when those settings need to change. The method first builds all
+     * replacement exporters and flushes the current providers. If either step fails, the active exporters
+     * remain in use.
+     */
+    public CompletableResultCode updateExporters(SdkConfig config) {
+        if (config == null || closed.get() || !reconfiguring.compareAndSet(false, true)) {
+            return CompletableResultCode.ofFailure();
+        }
+        if (!sameProviderSettings(config)) {
+            reconfiguring.set(false);
+            return CompletableResultCode.ofFailure();
+        }
+        final Exporters replacement;
+        try {
+            replacement = buildExporters(config);
+        } catch (RuntimeException e) {
+            reconfiguring.set(false);
+            return CompletableResultCode.ofExceptionalFailure(e);
+        }
+        CompletableResultCode drained = CompletableResultCode.ofAll(List.of(
+            otel.getSdkTracerProvider().forceFlush(),
+            otel.getSdkMeterProvider().forceFlush(),
+            otel.getSdkLoggerProvider().forceFlush()));
+        CompletableResultCode result = new CompletableResultCode();
+        drained.whenComplete(() -> {
+            if (!drained.isSuccess()) {
+                closeExporters(replacement);
+                reconfiguring.set(false);
+                result.fail();
+                return;
+            }
+            CompletableResultCode retired = CompletableResultCode.ofAll(List.of(
+                spanExporter.replace(replacement.spans()),
+                metricExporter.replace(replacement.metrics()),
+                logExporter.replace(replacement.logs())));
+            retired.whenComplete(() -> {
+                reconfiguring.set(false);
+                if (retired.isSuccess()) result.succeed(); else result.fail();
+            });
+        });
+        return result;
+    }
+
+    private boolean sameProviderSettings(SdkConfig config) {
+        return config.serviceName.equals(providerConfig.serviceName)
+            && config.metricInterval.equals(providerConfig.metricInterval)
+            && sameBatch(config.spanBatch, providerConfig.spanBatch)
+            && sameBatch(config.logBatch, providerConfig.logBatch);
+    }
+
+    private static boolean sameBatch(BatchConfig left, BatchConfig right) {
+        return left.maxQueueSize == right.maxQueueSize
+            && left.maxExportBatchSize == right.maxExportBatchSize
+            && left.scheduleDelay.equals(right.scheduleDelay)
+            && left.exportTimeout.equals(right.exportTimeout);
+    }
+
+    private static void closeExporters(Exporters exporters) {
+        exporters.spans().shutdown();
+        exporters.metrics().shutdown();
+        exporters.logs().shutdown();
     }
 
     /**
@@ -195,7 +344,7 @@ public final class ObservabilitySdk implements AutoCloseable {
     }
 
     private static final class TrackingSpanExporter implements SpanExporter {
-        private final SpanExporter delegate;
+        private volatile SpanExporter delegate;
         private final AtomicLong exportFailures;
 
         private TrackingSpanExporter(SpanExporter delegate, AtomicLong exportFailures) {
@@ -218,10 +367,16 @@ public final class ObservabilitySdk implements AutoCloseable {
         @Override public CompletableResultCode flush() { return delegate.flush(); }
         @Override public CompletableResultCode shutdown() { return delegate.shutdown(); }
         @Override public void close() { delegate.close(); }
+
+        synchronized CompletableResultCode replace(SpanExporter replacement) {
+            SpanExporter previous = delegate;
+            delegate = replacement;
+            return previous.shutdown();
+        }
     }
 
     private static final class TrackingMetricExporter implements MetricExporter {
-        private final MetricExporter delegate;
+        private volatile MetricExporter delegate;
         private final AtomicLong exportFailures;
 
         private TrackingMetricExporter(MetricExporter delegate, AtomicLong exportFailures) {
@@ -259,10 +414,16 @@ public final class ObservabilitySdk implements AutoCloseable {
         @Override public CompletableResultCode flush() { return delegate.flush(); }
         @Override public CompletableResultCode shutdown() { return delegate.shutdown(); }
         @Override public void close() { delegate.close(); }
+
+        synchronized CompletableResultCode replace(MetricExporter replacement) {
+            MetricExporter previous = delegate;
+            delegate = replacement;
+            return previous.shutdown();
+        }
     }
 
     private static final class TrackingLogRecordExporter implements LogRecordExporter {
-        private final LogRecordExporter delegate;
+        private volatile LogRecordExporter delegate;
         private final AtomicLong exportFailures;
 
         private TrackingLogRecordExporter(LogRecordExporter delegate, AtomicLong exportFailures) {
@@ -285,5 +446,11 @@ public final class ObservabilitySdk implements AutoCloseable {
         @Override public CompletableResultCode flush() { return delegate.flush(); }
         @Override public CompletableResultCode shutdown() { return delegate.shutdown(); }
         @Override public void close() { delegate.close(); }
+
+        synchronized CompletableResultCode replace(LogRecordExporter replacement) {
+            LogRecordExporter previous = delegate;
+            delegate = replacement;
+            return previous.shutdown();
+        }
     }
 }

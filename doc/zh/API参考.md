@@ -52,6 +52,12 @@ if (!sdk.flush(10, TimeUnit.SECONDS)) {
 
 关闭 OpenTelemetry provider。推荐使用 try-with-resources；关闭后不应继续使用此 SDK。
 
+### 运行时控制
+
+`setEnabled(boolean)` 控制是否创建新的观测信号，`isEnabled()` 返回当前状态。关闭后，已经创建的 Span 仍可结束并导出。
+
+`CompletableResultCode updateExporters(SdkConfig config)` 可更新三类信号的 OTLP endpoint、协议、请求头、TLS 材料和导出超时。SDK 先创建新 exporter 并 flush 当前 provider；`serviceName`、指标间隔或批处理参数发生变化时会拒绝更新，需新建 SDK 实例。
+
 ## `SdkConfig` 与 `SdkConfig.Builder`
 
 `SdkConfig.builder()` 创建构造器。构造器中显式设置的值优先于对应环境变量。
@@ -65,7 +71,11 @@ if (!sdk.flush(10, TimeUnit.SECONDS)) {
 | `headers(Map<String,String>)` | `OTEL_EXPORTER_OTLP_HEADERS` | 无 | 覆盖全部请求头 |
 | `header(String,String)` | `OTEL_EXPORTER_OTLP_HEADERS` | 无 | 增加一个请求头；首次调用后 Builder 请求头优先 |
 | `trustedCertificate(Path)` | `OTEL_EXPORTER_OTLP_CERTIFICATE` | 系统信任库 | PEM 或 DER 格式的 X.509 CA；只可配合 `https` |
+| `clientCertificate(Path)` + `clientPrivateKey(Path)` | — | 无 | mTLS 客户端证书与配对 PEM 私钥；只可配合 `https` |
 | `exportTimeout(Duration)` | `OTEL_EXPORTER_OTLP_TIMEOUT` | 10 秒 | 单个 OTLP 批次导出超时；零表示不设导出时限 |
+| `enabled(boolean)` | — | `true` | 初始运行时采集状态 |
+| `spanBatch(BatchConfig)` | — | 2048 / 512 / 5s / 30s | Trace 队列、批大小、延迟和处理器超时 |
+| `logBatch(BatchConfig)` | — | 2048 / 512 / 1s / 30s | Log 队列、批大小、延迟和处理器超时 |
 
 `OTEL_EXPORTER_OTLP_HEADERS` 使用逗号分隔的 `key=value` 格式；值需要进行百分号编码。使用 Builder 传入时可直接提供原始值。
 
@@ -136,9 +146,11 @@ observe.metric("workflow.duration", 180, Map.of(
 void log(String name, LogSeverity severity, String body, Map<String, ?> attributes)
 void log(String name, LogSeverity severity, String body, Map<String, ?> attributes,
          ObservationSpan span)
+void log(String name, LogSeverity severity, String body, Map<String, ?> attributes,
+         Context context)
 ```
 
-上报结构化日志。提供 `span` 时，日志关联该 Span；未提供时使用当前上下文。
+上报结构化日志。提供 `span` 或 `context` 时，日志关联对应上下文；未提供时使用当前上下文。
 
 `LogSeverity` 支持 `TRACE`、`DEBUG`、`INFO`、`WARN`、`ERROR`、`FATAL`。
 
