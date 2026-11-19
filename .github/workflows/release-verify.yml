@@ -38,7 +38,7 @@ jobs:
           test -n "${SIGNING_PASSWORD}" || { echo "SIGNING_PASSWORD is not set"; exit 1; }
 
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up JDK 17 and signing key
         uses: actions/setup-java@v4
