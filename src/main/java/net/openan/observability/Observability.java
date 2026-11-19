@@ -63,7 +63,7 @@ public final class Observability {
         Context context = parent == null ? Context.current() : parent.context();
         try {
             boolean streamEvent = Definitions.STREAM_EVENT.equals(name);
-            boolean clientOnly = streamEvent || Definitions.STREAM_ERROR.equals(name);
+            boolean clientOnly = Definitions.A2A_CLIENT_ONLY_SPAN_NAMES.contains(name);
             boolean a2a = Definitions.A2A_SPAN_NAMES.contains(name);
             Definitions.Signal definition;
             if (a2a) {

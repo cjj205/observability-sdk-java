@@ -21,11 +21,19 @@ final class SignalConfigurationLoader {
         Map<String, Definitions.NamedSignal> namedLogs = new LinkedHashMap<>();
         Map<String, Definitions.Attribute> attributes = new LinkedHashMap<>();
         Map<String, String> versions = new LinkedHashMap<>();
-        for (String resource : RESOURCES) load(resource, metrics, spans, logs, traces, namedLogs, attributes, versions);
-        return new Catalog(Map.copyOf(metrics), Map.copyOf(spans), Map.copyOf(logs), Map.copyOf(traces), Map.copyOf(namedLogs), Map.copyOf(attributes), Map.copyOf(versions));
+        A2aProtocol a2a = null;
+        for (String resource : RESOURCES) {
+            A2aProtocol loaded = load(resource, metrics, spans, logs, traces, namedLogs, attributes, versions);
+            if (loaded != null) {
+                if (a2a != null) throw new IllegalStateException("Duplicate A2A protocol configuration");
+                a2a = loaded;
+            }
+        }
+        if (a2a == null) throw new IllegalStateException("Missing A2A protocol configuration");
+        return new Catalog(Map.copyOf(metrics), Map.copyOf(spans), Map.copyOf(logs), Map.copyOf(traces), Map.copyOf(namedLogs), Map.copyOf(attributes), Map.copyOf(versions), a2a);
     }
 
-    private static void load(String resource, Map<String, Definitions.Metric> metrics, Map<String, Definitions.Signal> spans,
+    private static A2aProtocol load(String resource, Map<String, Definitions.Metric> metrics, Map<String, Definitions.Signal> spans,
         Map<String, Definitions.Signal> logs, Map<String, Definitions.NamedSignal> traces, Map<String, Definitions.NamedSignal> namedLogs,
         Map<String, Definitions.Attribute> attributes, Map<String, String> versions) {
         try (InputStream stream = SignalConfigurationLoader.class.getClassLoader().getResourceAsStream(resource)) {
@@ -58,6 +66,7 @@ final class SignalConfigurationLoader {
             }
             loadNamedSignals(root.get("traces"), resource + ".traces", traces);
             loadNamedSignals(root.get("logs"), resource + ".logs", namedLogs);
+            return root.containsKey("a2a") ? a2aProtocol(root.get("a2a"), resource + ".a2a") : null;
         } catch (IllegalStateException e) {
             throw e;
         } catch (Exception e) {
@@ -74,7 +83,9 @@ final class SignalConfigurationLoader {
             catch (IllegalArgumentException e) { throw new IllegalStateException("Unsupported attribute type at " + path + "." + key + ".type"); }
             Set<String> values = item.containsKey("values") ? strings(item.get("values"), path + "." + key + ".values") : Set.of();
             if (!values.isEmpty() && !key.equals("extension.name")) throw new IllegalStateException("Only extension.name may declare values at " + path + "." + key);
-            Definitions.Attribute attribute = new Definitions.Attribute(string(item.get("otel_name"), path + "." + key + ".otel_name"), "SML", attributeType, values);
+            String signals = item.containsKey("signals") ? string(item.get("signals"), path + "." + key + ".signals") : "SML";
+            if (!signals.matches("[SML]+")) throw new IllegalStateException("Invalid attribute signals at " + path + "." + key + ".signals");
+            Definitions.Attribute attribute = new Definitions.Attribute(string(item.get("otel_name"), path + "." + key + ".otel_name"), signals, attributeType, values);
             Definitions.Attribute existing = target.putIfAbsent(key, attribute);
             if (existing != null && !existing.equals(attribute)) throw new IllegalStateException("Conflicting attribute definition: " + key);
         }
@@ -94,6 +105,22 @@ final class SignalConfigurationLoader {
             Definitions.NamedSignal named = new Definitions.NamedSignal(name, namePrefix, signal(null, item.get("attributes"), path + "." + entry.getKey() + ".attributes"));
             if (target.putIfAbsent(entry.getKey(), named) != null) throw new IllegalStateException("Duplicate named signal: " + entry.getKey());
         }
+    }
+    private static A2aProtocol a2aProtocol(Object value, String path) {
+        Map<String, Object> protocol = map(value, path);
+        Map<String, Object> specialTraces = map(protocol.get("special_traces"), path + ".special_traces");
+        String message = string(specialTraces.get("message"), path + ".special_traces.message");
+        String stream = string(specialTraces.get("stream"), path + ".special_traces.stream");
+        String streamEvent = string(specialTraces.get("stream_event"), path + ".special_traces.stream_event");
+        String streamError = string(specialTraces.get("stream_error"), path + ".special_traces.stream_error");
+        Set<String> traceNames = strings(protocol.get("trace_names"), path + ".trace_names");
+        Set<String> clientOnlyTraces = strings(protocol.get("client_only_traces"), path + ".client_only_traces");
+        if (!traceNames.containsAll(Set.of(message, stream, streamEvent, streamError)) || !traceNames.containsAll(clientOnlyTraces)) {
+            throw new IllegalStateException("A2A special traces must be listed at " + path);
+        }
+        return new A2aProtocol(string(protocol.get("attribute_prefix"), path + ".attribute_prefix"), message, stream, streamEvent,
+            streamError, traceNames, clientOnlyTraces, signal(null, protocol.get("span_attributes"), path + ".span_attributes"),
+            signal(null, protocol.get("stream_event_attributes"), path + ".stream_event_attributes"));
     }
     @SuppressWarnings("unchecked")
     private static Map<String, Object> map(Object value, String path) {
@@ -128,6 +155,8 @@ final class SignalConfigurationLoader {
     record Catalog(Map<String, Definitions.Metric> metrics, Map<String, Definitions.Signal> spans,
         Map<String, Definitions.Signal> logs, Map<String, Definitions.NamedSignal> traces,
         Map<String, Definitions.NamedSignal> namedLogs, Map<String, Definitions.Attribute> attributes,
-        Map<String, String> versions) {}
+        Map<String, String> versions, A2aProtocol a2a) {}
+    record A2aProtocol(String attributePrefix, String message, String stream, String streamEvent, String streamError,
+        Set<String> traceNames, Set<String> clientOnlyTraces, Definitions.Signal span, Definitions.Signal streamEventSpan) {}
     private SignalConfigurationLoader() {}
 }
