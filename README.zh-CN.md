@@ -194,6 +194,7 @@ Log4j2 可选模块位于 `observability-sdk-log4j2/`，仅转发包含指定 Ma
 | [`WorkflowAgentExample`](examples/src/main/java/net/openan/observability/example/WorkflowAgentExample.java) | Workflow、Step、Agent 子步骤、Token 用量和生命周期日志 |
 | [`examples/collector-config.yaml`](examples/collector-config.yaml) | 本地 gRPC / HTTP OTLP 接收配置 |
 | [`examples/collector-auth-tls-config.yaml`](examples/collector-auth-tls-config.yaml) | TLS 与 Bearer Token 接收配置 |
+| [`deploy/local-storage/`](deploy/local-storage/) | 本地 Collector、Prometheus/Thanos、OpenSearch/Data Prepper 与 Jaeger 存储栈 |
 | [`consumer-smoke/`](consumer-smoke/) | 独立 Maven 消费应用 |
 | [`src/test/java/`](src/test/java/) | YAML 定义、字段校验、三类信号转换、OTLP 配置与导出失败测试 |
 

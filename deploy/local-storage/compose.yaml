@@ -1,0 +1,85 @@
+name: openan-observability-local
+
+services:
+  collector:
+    image: otel/opentelemetry-collector:0.139.0
+    command: ["--config=/etc/otelcol/collector.yaml"]
+    volumes:
+      - ./collector.yaml:/etc/otelcol/collector.yaml:ro
+    ports:
+      - "127.0.0.1:14317:4317"
+      - "127.0.0.1:14318:4318"
+    depends_on: [prometheus, data-prepper, jaeger]
+
+  prometheus:
+    image: prom/prometheus:v3.7.3
+    command:
+      - --config.file=/etc/prometheus/prometheus.yaml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=48h
+      - --storage.tsdb.min-block-duration=2h
+      - --storage.tsdb.max-block-duration=2h
+      - --web.enable-lifecycle
+      - --web.enable-otlp-receiver
+    volumes:
+      - ./prometheus.yaml:/etc/prometheus/prometheus.yaml:ro
+      - prometheus-data:/prometheus
+    ports:
+      - "127.0.0.1:19090:9090"
+
+  thanos-sidecar:
+    image: quay.io/thanos/thanos:v0.39.2
+    user: "0"
+    command:
+      - sidecar
+      - --tsdb.path=/prometheus
+      - --prometheus.url=http://prometheus:9090
+      - --objstore.config-file=/etc/thanos/objstore.yaml
+    volumes:
+      - prometheus-data:/prometheus
+      - ./thanos-objstore.yaml:/etc/thanos/objstore.yaml:ro
+      - thanos-data:/var/thanos
+    depends_on: [prometheus]
+
+  thanos-query:
+    image: quay.io/thanos/thanos:v0.39.2
+    command: [query, --endpoint=thanos-sidecar:10901]
+    ports:
+      - "127.0.0.1:11902:10902"
+    depends_on: [thanos-sidecar]
+
+  opensearch:
+    image: opensearchproject/opensearch:3.5.0
+    environment:
+      discovery.type: single-node
+      DISABLE_INSTALL_DEMO_CONFIG: "true"
+      DISABLE_SECURITY_PLUGIN: "true"
+      OPENSEARCH_JAVA_OPTS: -Xms512m -Xmx512m
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    volumes:
+      - opensearch-data:/usr/share/opensearch/data
+    ports:
+      - "127.0.0.1:19200:9200"
+
+  data-prepper:
+    image: opensearchproject/data-prepper:2.12.0
+    volumes:
+      - ./data-prepper-logs.yaml:/usr/share/data-prepper/pipelines/logs.yaml:ro
+    depends_on: [opensearch]
+
+  jaeger:
+    image: jaegertracing/jaeger:2.23.0
+    command: ["--config", "/jaeger/config.yaml"]
+    volumes:
+      - ./jaeger-opensearch.yaml:/jaeger/config.yaml:ro
+    ports:
+      - "127.0.0.1:16686:16686"
+    depends_on: [opensearch]
+
+volumes:
+  prometheus-data:
+  thanos-data:
+  opensearch-data:

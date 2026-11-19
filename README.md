@@ -217,6 +217,7 @@ The optional Log4j2 bridge is in `observability-sdk-log4j2/`. It forwards only e
 | [`WorkflowAgentExample`](examples/src/main/java/net/openan/observability/example/WorkflowAgentExample.java) | Workflow, step, agent substep, token usage, and lifecycle logs |
 | [`examples/collector-config.yaml`](examples/collector-config.yaml) | Local gRPC / HTTP OTLP receiver configuration |
 | [`examples/collector-auth-tls-config.yaml`](examples/collector-auth-tls-config.yaml) | TLS and Bearer Token receiver configuration |
+| [`deploy/local-storage/`](deploy/local-storage/) | Local Collector, Prometheus/Thanos, OpenSearch/Data Prepper, and Jaeger storage stack |
 | [`consumer-smoke/`](consumer-smoke/) | Independent Maven consumer application |
 | [`src/test/java/`](src/test/java/) | YAML definitions, validation, all three signal types, OTLP configuration, and export-failure tests |
 
