@@ -26,3 +26,25 @@ jobs:
 
       - name: Build and run tests
         run: mvn -B -ntp -Pexamples clean verify
+
+      - name: Install SDK artifact for consumer verification
+        run: mvn -B -ntp -DskipTests install
+
+      - name: Start OTLP HTTP Collector
+        run: |
+          docker run --detach --rm --name otelcol \
+            --publish 4318:4318 \
+            --volume "${{ github.workspace }}/examples/collector-config.yaml:/etc/otelcol/config.yaml:ro" \
+            otel/opentelemetry-collector:0.139.0 --config=/etc/otelcol/config.yaml
+          timeout 30 bash -c 'until (echo > /dev/tcp/127.0.0.1/4318) 2>/dev/null; do sleep 1; done'
+
+      - name: Run independent Maven consumer
+        working-directory: consumer-smoke
+        env:
+          OTEL_EXPORTER_OTLP_PROTOCOL: http/protobuf
+          OTEL_EXPORTER_OTLP_ENDPOINT: http://127.0.0.1:4318
+        run: mvn -B -ntp package exec:java '-Dexec.mainClass=net.openan.observability.consumer.ConsumerSmoke' '-Dexec.args=ci' '-Dexec.cleanupDaemonThreads=false'
+
+      - name: Show Collector output
+        if: always()
+        run: docker logs otelcol || true

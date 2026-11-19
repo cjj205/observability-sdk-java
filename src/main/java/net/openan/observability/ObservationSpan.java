@@ -8,6 +8,7 @@ import io.opentelemetry.api.trace.StatusCode;
 import io.opentelemetry.context.Context;
 import io.opentelemetry.context.Scope;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.logging.Logger;
 
@@ -26,6 +27,11 @@ public final class ObservationSpan implements AutoCloseable {
     }
     public void ok() { span.setStatus(StatusCode.OK); }
     public void error() { span.setStatus(StatusCode.ERROR); }
+    /** Records an exception on this span and marks it as failed. */
+    public void error(Throwable error) {
+        span.recordException(Objects.requireNonNull(error, "error is required"));
+        span.setStatus(StatusCode.ERROR);
+    }
     public Scope makeCurrent() { return context().makeCurrent(); }
     Context context() { return definition == null ? Context.current() : context; }
     @Override public void close() { if (ended.compareAndSet(false, true)) span.end(); }
