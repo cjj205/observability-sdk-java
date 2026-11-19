@@ -1,0 +1,32 @@
+a2at-logs:
+  source:
+    otel_logs_source:
+      ssl: false
+      port: 21892
+      output_format: otel
+  sink:
+    - opensearch:
+        hosts: ["http://opensearch:9200"]
+        index: a2at-logs-v2
+        template_type: index-template
+        template_content: >
+          {
+            "index_patterns": ["a2at-logs-v2"],
+            "priority": 200,
+            "template": {
+              "mappings": {
+                "properties": {
+                  "traceId": {"type": "keyword"},
+                  "spanId": {"type": "keyword"},
+                  "body": {"type": "text"},
+                  "attributes": {"type": "flat_object"},
+                  "resource": {
+                    "properties": {
+                      "attributes": {"type": "flat_object"}
+                    }
+                  }
+                }
+              }
+            }
+          }
+        flush_timeout: 1

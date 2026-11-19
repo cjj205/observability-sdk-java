@@ -1,0 +1,11 @@
+global:
+  scrape_interval: 15s
+  external_labels:
+    cluster: openan-local
+    replica: prometheus-0
+
+otlp:
+  promote_resource_attributes:
+    - service.name
+
+scrape_configs: []
