@@ -1,4 +1,4 @@
-version: 1.1.0
+version: 1.0.0
 signal: a2at
 
 attributes:
@@ -32,24 +32,24 @@ attributes:
 a2a:
   attribute_prefix: gen_ai.agent.a2a.
   special_traces:
-    message: message/send
-    stream: message/stream
-    stream_event: message/stream-event
-    stream_error: message/stream-error
+    message: SendMessage
+    stream: SendStreamingMessage
+    stream_event: SendStreamingMessage-event
+    stream_error: SendStreamingMessage-end
   trace_names:
-    - message/send
-    - message/stream
-    - message/stream-event
-    - message/stream-error
-    - tasks/get
-    - tasks/cancel
-    - tasks/list
-    - tasks/resubscribe
-    - tasks/pushNotificationConfig/set
-    - tasks/pushNotificationConfig/get
-    - tasks/pushNotificationConfig/list
-    - tasks/pushNotificationConfig/delete
-  client_only_traces: [message/stream-event, message/stream-error]
+    - SendMessage
+    - SendStreamingMessage
+    - SendStreamingMessage-event
+    - SendStreamingMessage-end
+    - GetTask
+    - CancelTask
+    - ListTasks
+    - SubscribeToTask
+    - CreateTaskPushNotificationConfig
+    - GetTaskPushNotificationConfig
+    - ListTaskPushNotificationConfigs
+    - DeleteTaskPushNotificationConfig
+  client_only_traces: [SendStreamingMessage-event, SendStreamingMessage-end]
   span_attributes:
     allowed: [operation.name, task_id, context_id, message_id, Role, Extensions, parts.number, config_id, Request, Response, error.type]
     required: []

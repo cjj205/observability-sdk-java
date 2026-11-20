@@ -75,7 +75,7 @@ try (var sdk = ObservabilitySdk.start(SdkConfig.builder()
 
     // A2A-T: Task-T message, log, and metrics.
     var task = Map.of("extension.name", "task-t", "task.type", "diagnosis");
-    try (var span = observe.trace("message/send", SignalKind.CLIENT, task)) {
+    try (var span = observe.trace("SendMessage", SignalKind.CLIENT, task)) {
         observe.log("gen_ai.agent.a2at.message", LogSeverity.INFO,
             "diagnosis completed", task, span);
         observe.metric("task.duration", 42_000, Map.of("task.type", "diagnosis"));
@@ -124,13 +124,13 @@ Call `span.error()` for failures. `span.makeCurrent()` establishes context on th
 Use `TraceContextPropagation` to inject the current W3C `traceparent` header into an outbound carrier and to make an inbound context current before creating the server span. `error(Throwable)` records the exception and marks the span as failed.
 
 ```java
-try (var client = observe.trace("message/send", SignalKind.CLIENT, attributes);
+try (var client = observe.trace("SendMessage", SignalKind.CLIENT, attributes);
      var scope = client.makeCurrent()) {
     TraceContextPropagation.inject(requestHeaders, Map::put);
 }
 
 try (var scope = TraceContextPropagation.extractToCurrent(requestHeaders, headerGetter);
-     var server = observe.trace("message/send", SignalKind.SERVER, attributes)) {
+     var server = observe.trace("SendMessage", SignalKind.SERVER, attributes)) {
     try {
         // Handle the request.
         server.ok();
@@ -145,10 +145,10 @@ try (var scope = TraceContextPropagation.extractToCurrent(requestHeaders, header
 
 ### A2A / A2A-T
 
-- A2A traces support `message/send`, `message/stream`, `message/stream-event`, `message/stream-error`, and `tasks/*` operations. A stream event can hold a Span Link to its upstream span.
+- A2A traces support `SendMessage`, `SendStreamingMessage`, `SendStreamingMessage-event`, `SendStreamingMessage-end`, and the task operations (`GetTask`, `CancelTask`, `ListTasks`, `SubscribeToTask`, and the push-notification config operations). A stream event can hold a Span Link to its upstream span.
 - The A2A metrics are `gen_ai.client.operation.duration` and `gen_ai.agent.a2a.streaming.duration`; both require `operation.name`.
 - A2A-T includes Task-T, Negotiation-T, Notification-T, and Authorization-T. Metrics include `task.duration`, `task.count`, `negotiation.rounds`, `negotiation.count`, `notification.count`, and three Authorization metrics.
-- `message/send`, `message/stream`, and `gen_ai.agent.a2at.message` use `extension.name` to select extension attributes. Task-T requires a non-blank `task.type`.
+- `SendMessage`, `SendStreamingMessage`, and `gen_ai.agent.a2at.message` use `extension.name` to select extension attributes. Task-T requires a non-blank `task.type`.
 
 ### Workflow
 

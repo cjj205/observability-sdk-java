@@ -75,7 +75,7 @@ try (var sdk = ObservabilitySdk.start(SdkConfig.builder()
 
     // A2A-T：Task-T 消息、日志和指标。
     var task = Map.of("extension.name", "task-t", "task.type", "diagnosis");
-    try (var span = observe.trace("message/send", SignalKind.CLIENT, task)) {
+    try (var span = observe.trace("SendMessage", SignalKind.CLIENT, task)) {
         observe.log("gen_ai.agent.a2at.message", LogSeverity.INFO,
             "diagnosis completed", task, span);
         observe.metric("task.duration", 42_000, Map.of("task.type", "diagnosis"));
@@ -124,13 +124,13 @@ try (var sdk = ObservabilitySdk.start(SdkConfig.builder()
 使用 `TraceContextPropagation` 向出站载体写入当前 W3C `traceparent`，并在创建服务端 Span 前从入站载体提取上下文。`error(Throwable)` 会记录异常并将 Span 标记为失败。
 
 ```java
-try (var client = observe.trace("message/send", SignalKind.CLIENT, attributes);
+try (var client = observe.trace("SendMessage", SignalKind.CLIENT, attributes);
      var scope = client.makeCurrent()) {
     TraceContextPropagation.inject(requestHeaders, Map::put);
 }
 
 try (var scope = TraceContextPropagation.extractToCurrent(requestHeaders, headerGetter);
-     var server = observe.trace("message/send", SignalKind.SERVER, attributes)) {
+     var server = observe.trace("SendMessage", SignalKind.SERVER, attributes)) {
     try {
         // 处理请求。
         server.ok();
@@ -145,10 +145,10 @@ try (var scope = TraceContextPropagation.extractToCurrent(requestHeaders, header
 
 ### A2A / A2A-T
 
-- A2A Trace 支持 `message/send`、`message/stream`、`message/stream-event`、`message/stream-error` 与 `tasks/*` 操作；流事件可关联上游 Span Link。
+- A2A Trace 支持 `SendMessage`、`SendStreamingMessage`、`SendStreamingMessage-event`、`SendStreamingMessage-end` 与各任务操作（`GetTask`、`CancelTask`、`ListTasks`、`SubscribeToTask` 及推送通知配置操作）；流事件可关联上游 Span Link。
 - A2A 指标为 `gen_ai.client.operation.duration` 与 `gen_ai.agent.a2a.streaming.duration`，均要求 `operation.name`。
 - A2A-T 包含 Task-T、Negotiation-T、Notification-T、Authorization-T 四种扩展，以及 `task.duration`、`task.count`、`negotiation.rounds`、`negotiation.count`、`notification.count` 和三项 Authorization 指标。
-- `message/send`、`message/stream` 和 `gen_ai.agent.a2at.message` 使用 `extension.name` 选择对应扩展属性。Task-T 的 `task.type` 必填且不能为空。
+- `SendMessage`、`SendStreamingMessage` 和 `gen_ai.agent.a2at.message` 使用 `extension.name` 选择对应扩展属性。Task-T 的 `task.type` 必填且不能为空。
 
 ### Workflow
 
