@@ -49,6 +49,29 @@ Invoke-RestMethod 'http://127.0.0.1:19200/a2at-logs-v2/_search?pretty'
 
 In Jaeger UI, search by the SDK `service.name`. Prometheus counters use the `_total` suffix. Query OpenSearch logs by `resource.attributes.service.name` when separating test runs.
 
+## Run the storage verification
+
+`verify.ps1` starts the Compose stack, installs the SDK artifact, runs the independent
+consumer, and waits until the metric, log, and trace can each be read from their
+storage query endpoint. It writes a local JSON report named
+`verification-report-<run-id>.json`; reports are ignored by Git. Containers and volumes
+are retained after a successful run so that the stored data can be inspected.
+
+```powershell
+Set-Location deploy/local-storage
+.\verify.ps1
+```
+
+Use a fixed run ID when comparing runs, and use `-Shutdown` only when the stack may be
+stopped after verification:
+
+```powershell
+.\verify.ps1 -RunId 'storage-check-001' -Shutdown
+```
+
+The script requires Docker Compose, JDK 17, and Maven. It assumes Docker Desktop or a
+WSL Docker engine is already running.
+
 ## Stop
 
 ```powershell

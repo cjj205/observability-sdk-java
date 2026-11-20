@@ -12,7 +12,7 @@ Then, from this directory, compile and run the app. Collector connection setting
 
 ```powershell
 $env:OTEL_EXPORTER_OTLP_PROTOCOL = 'http/protobuf'
-$env:OTEL_EXPORTER_OTLP_ENDPOINT = 'http://localhost:4318'
+$env:OTEL_EXPORTER_OTLP_ENDPOINT = 'http://localhost:14318'
 $runId = 'consumer-20261117'
 mvn -B -ntp package exec:java '-Dexec.mainClass=net.openan.observability.consumer.ConsumerSmoke' "-Dexec.args=$runId" '-Dexec.cleanupDaemonThreads=false'
 ```
