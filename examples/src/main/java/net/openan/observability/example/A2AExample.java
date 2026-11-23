@@ -14,9 +14,9 @@ public final class A2AExample {
             var observe = sdk.observe();
             try (var span = observe.trace("SendMessage", SignalKind.CLIENT, Map.of(
                 "operation.name", "SendMessage", "task_id", "demo-task", "context_id", "demo-context",
-                "message_id", "demo-message", "Role", "user", "Extensions", "task-t", "parts.number", 1,
-                "Request", "Demo request"))) {
-                span.attributes(Map.of("Response", "Demo response"));
+                "message_id", "demo-message", "role", "user", "extensions", "task-t", "parts.number", 1,
+                "request", "Demo request"))) {
+                span.attributes(Map.of("response", "Demo response"));
                 span.ok();
             }
             try (var stream = observe.trace("SendStreamingMessage", SignalKind.CLIENT, Map.of(

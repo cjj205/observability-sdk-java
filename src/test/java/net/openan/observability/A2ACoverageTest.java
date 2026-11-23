@@ -33,7 +33,7 @@ class A2ACoverageTest {
                 observe.trace(method, SignalKind.SERVER, Map.of()).end();
             }
             observe.trace("agent/get", SignalKind.CLIENT, Map.of()).end();
-            assertEquals(22, spans.getFinishedSpanItems().size());
+            assertEquals(24, spans.getFinishedSpanItems().size());
         }
     }
 
@@ -43,13 +43,13 @@ class A2ACoverageTest {
             var observe = new Observability(sdk);
             Map<String, Object> attrs = Map.ofEntries(
                 Map.entry("gen_ai.agent.a2a.operation.name", "SendStreamingMessage"), Map.entry("task_id", "task"),
-                Map.entry("context_id", "ctx"), Map.entry("message_id", "msg"), Map.entry("Role", "AGENT"),
-                Map.entry("Extensions", "task-t"), Map.entry("parts.number", 2), Map.entry("config_id", "config"),
-                Map.entry("Request", "https://example.com/test?token=secret"), Map.entry("error.type", "timeout"),
+                Map.entry("context_id", "ctx"), Map.entry("message_id", "msg"), Map.entry("role", "AGENT"),
+                Map.entry("extensions", "task-t"), Map.entry("parts.number", 2), Map.entry("config_id", "config"),
+                Map.entry("request", "https://example.com/test?token=secret"), Map.entry("error.type", "timeout"),
                 Map.entry("extension.name", "task-t"), Map.entry("task.type", "diagnosis"));
             var stream = observe.trace("SendStreamingMessage", SignalKind.CLIENT, attrs);
-            stream.attributes(Map.of("Response", "redacted summary"));
-            stream.attributes(Map.of("streaming-event", "wrong location", "Response", "must not replace"));
+            stream.attributes(Map.of("response", "redacted summary"));
+            stream.attributes(Map.of("streaming-event", "wrong location", "response", "must not replace"));
             observe.trace("SendStreamingMessage-event", SignalKind.CLIENT, Map.of("streaming-event", "status update"), stream).end();
             stream.end();
 
@@ -60,14 +60,14 @@ class A2ACoverageTest {
             assertEquals("status update", event.getAttributes().get(AttributeKey.stringKey("gen_ai.agent.a2a.streaming-event")));
             var stored = parent.getAttributes();
             assertEquals(Set.of("gen_ai.agent.a2a.operation.name", "gen_ai.agent.a2a.task_id", "gen_ai.agent.a2a.context_id",
-                "gen_ai.agent.a2a.message_id", "gen_ai.agent.a2a.Role", "gen_ai.agent.a2a.Extensions", "gen_ai.agent.a2a.parts.number",
-                "gen_ai.agent.a2a.config_id", "gen_ai.agent.a2a.Request", "gen_ai.agent.a2a.Response", "error.type",
+                "gen_ai.agent.a2a.message_id", "gen_ai.agent.a2a.role", "gen_ai.agent.a2a.extensions", "gen_ai.agent.a2a.parts.number",
+                "gen_ai.agent.a2a.config_id", "gen_ai.agent.a2a.request", "gen_ai.agent.a2a.response", "error.type",
                 "gen_ai.agent.a2at.extension.name", "gen_ai.agent.a2at.task.type"),
                 stored.asMap().keySet().stream().map(AttributeKey::getKey).collect(Collectors.toSet()));
-            assertEquals("AGENT", stored.get(AttributeKey.stringKey("gen_ai.agent.a2a.Role")));
+            assertEquals("AGENT", stored.get(AttributeKey.stringKey("gen_ai.agent.a2a.role")));
             assertEquals(2L, stored.get(AttributeKey.longKey("gen_ai.agent.a2a.parts.number")));
-            assertEquals("https://example.com/test", stored.get(AttributeKey.stringKey("gen_ai.agent.a2a.Request")));
-            assertEquals("redacted summary", stored.get(AttributeKey.stringKey("gen_ai.agent.a2a.Response")));
+            assertEquals("https://example.com/test", stored.get(AttributeKey.stringKey("gen_ai.agent.a2a.request")));
+            assertEquals("redacted summary", stored.get(AttributeKey.stringKey("gen_ai.agent.a2a.response")));
         }
     }
 
@@ -75,16 +75,16 @@ class A2ACoverageTest {
         var spans = InMemorySpanExporter.create();
         try (var sdk = tracingSdk(spans)) {
             var observe = new Observability(sdk);
-            observe.trace("SendMessage", SignalKind.CLIENT, Map.of("gen_ai.system", "A2A")).end();
+            observe.trace("SendMessage", SignalKind.CLIENT, Map.of("gen_ai.system", "a2a")).end();
             observe.trace("SendMessage", SignalKind.CLIENT, Map.of("gen_ai.agent.a2at.task_id", "x")).end();
             observe.trace("SendMessage", SignalKind.CLIENT, Map.of("parts.number", -1)).end();
-            observe.trace("SendMessage", SignalKind.CLIENT, Map.of("Role", "admin")).end();
+            observe.trace("SendMessage", SignalKind.CLIENT, Map.of("role", "admin")).end();
             observe.trace("SendMessage", SignalKind.CLIENT,
                 Map.of("operation.name", "SendMessage", "gen_ai.agent.a2a.operation.name", "SendMessage")).end();
             observe.trace("GetTask", SignalKind.CLIENT, Map.of("extension.name", "negotiation-t")).end();
             assertEquals(1, spans.getFinishedSpanItems().size());
             assertEquals("admin", spans.getFinishedSpanItems().get(0).getAttributes()
-                .get(AttributeKey.stringKey("gen_ai.agent.a2a.Role")));
+                .get(AttributeKey.stringKey("gen_ai.agent.a2a.role")));
         }
     }
 
@@ -95,7 +95,7 @@ class A2ACoverageTest {
             String operation = "gen_ai.client.operation.duration";
             String streaming = "gen_ai.agent.a2a.streaming.duration";
             observe.metric(operation, 0.125, Map.of("operation.name", "SendMessage"));
-            observe.metric(streaming, 0.5, Map.of("gen_ai.agent.a2a.operation.name", "SendStreamingMessage", "error.type", "timeout", "gen_ai.system", "A2A"));
+            observe.metric(streaming, 0.5, Map.of("gen_ai.agent.a2a.operation.name", "SendStreamingMessage", "error.type", "timeout", "gen_ai.system", "a2a"));
             observe.metric(operation, 100, Map.of());
             observe.metric(operation, 100, Map.of("operation.name", "SendMessage", "gen_ai.system", "wrong"));
             observe.metric(operation, 100, Map.of("operation.name", "SendMessage", "task_id", "wrong"));
@@ -112,7 +112,7 @@ class A2ACoverageTest {
                 var point = points.iterator().next();
                 assertEquals(1, point.getCount());
                 assertEquals(stream ? 0.5 : 0.125, point.getSum());
-                var expected = new HashMap<>(Map.of("gen_ai.system", "A2A",
+                var expected = new HashMap<>(Map.of("gen_ai.system", "a2a",
                     "gen_ai.agent.a2a.operation.name", stream ? "SendStreamingMessage" : "SendMessage"));
                 if (stream) expected.put("error.type", "timeout");
                 assertEquals(expected.size(), point.getAttributes().size());

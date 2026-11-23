@@ -95,7 +95,7 @@ class ObservabilityTest {
     private static Object metricValue(String dimension) {
         return switch (dimension) {
             case "operation.name" -> "SendMessage";
-            case "gen_ai.system" -> "A2A";
+            case "gen_ai.system" -> "a2a";
             case "negotiation.result" -> "accept";
             case "workflow.status" -> "completed";
             case "workflow.step.status" -> "done";

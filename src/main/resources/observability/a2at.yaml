@@ -6,15 +6,19 @@ attributes:
   task_id: {otel_name: gen_ai.agent.a2a.task_id, type: string, signals: S}
   context_id: {otel_name: gen_ai.agent.a2a.context_id, type: string, signals: S}
   message_id: {otel_name: gen_ai.agent.a2a.message_id, type: string, signals: S}
-  Role: {otel_name: gen_ai.agent.a2a.Role, type: string, signals: S}
-  Extensions: {otel_name: gen_ai.agent.a2a.Extensions, type: string, signals: S}
+  role: {otel_name: gen_ai.agent.a2a.role, type: string, signals: S}
+  extensions: {otel_name: gen_ai.agent.a2a.extensions, type: string, signals: S}
   parts.number: {otel_name: gen_ai.agent.a2a.parts.number, type: integer, signals: S}
   config_id: {otel_name: gen_ai.agent.a2a.config_id, type: string, signals: S}
-  Request: {otel_name: gen_ai.agent.a2a.Request, type: string, signals: S}
-  Response: {otel_name: gen_ai.agent.a2a.Response, type: string, signals: S}
+  request: {otel_name: gen_ai.agent.a2a.request, type: string, signals: S}
+  response: {otel_name: gen_ai.agent.a2a.response, type: string, signals: S}
   streaming-event: {otel_name: gen_ai.agent.a2a.streaming-event, type: string, signals: S}
   error.type: {otel_name: error.type, type: string, signals: SM}
   gen_ai.system: {otel_name: gen_ai.system, type: string, signals: M}
+  gen_ai.provider.name: {otel_name: gen_ai.provider.name, type: string, signals: S}
+  gen_ai.operation.name: {otel_name: gen_ai.operation.name, type: string, signals: S}
+  gen_ai.agent.id: {otel_name: gen_ai.agent.id, type: string, signals: S}
+  gen_ai.agent.version: {otel_name: gen_ai.agent.version, type: string, signals: S}
   extension.name: {otel_name: gen_ai.agent.a2at.extension.name, type: string, values: [task-t, negotiation-t, notification-t, authorization-t]}
   task.type: {otel_name: gen_ai.agent.a2at.task.type, type: string}
   task.object: {otel_name: gen_ai.agent.a2at.task.object, type: string}
@@ -49,12 +53,12 @@ a2a:
     - GetTaskPushNotificationConfig
     - ListTaskPushNotificationConfigs
     - DeleteTaskPushNotificationConfig
-  client_only_traces: [SendStreamingMessage-event, SendStreamingMessage-end]
+  client_only_traces: []
   span_attributes:
-    allowed: [operation.name, task_id, context_id, message_id, Role, Extensions, parts.number, config_id, Request, Response, error.type]
+    allowed: [operation.name, task_id, context_id, message_id, role, extensions, parts.number, config_id, request, response, error.type, gen_ai.provider.name, gen_ai.operation.name, gen_ai.agent.name, gen_ai.agent.id, gen_ai.agent.version]
     required: []
   stream_event_attributes:
-    allowed: [operation.name, task_id, context_id, message_id, Role, Extensions, parts.number, config_id, Request, Response, error.type, streaming-event]
+    allowed: [operation.name, task_id, context_id, message_id, role, extensions, parts.number, config_id, request, response, error.type, streaming-event, gen_ai.provider.name, gen_ai.operation.name, gen_ai.agent.name, gen_ai.agent.id, gen_ai.agent.version]
     required: []
 
 metrics:
