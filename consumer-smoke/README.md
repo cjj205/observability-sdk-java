@@ -18,3 +18,26 @@ mvn -B -ntp package exec:java '-Dexec.mainClass=net.openan.observability.consume
 ```
 
 The app creates one Task-T Span, a linked message Log, and the `task.duration` and `task.count` metrics, waits for `flush()`, then closes the SDK. It sets `service.name` to `sdk-consumer-<runId>` for Collector filtering.
+
+## Full signal consumer
+
+`ConsumerAllSignals` is separate from the fast smoke consumer. It emits every configured
+signal family with valid attributes:
+
+- A2A client/server operations, streaming event/end, stream negotiation, and push-related traces;
+- A2A operation and streaming metrics;
+- Task-T, Negotiation-T, Notification-T, and Authorization-T message/stream traces, logs, and metrics;
+- Workflow and step traces, logs, and metrics;
+- Agent and substep traces, logs, and metrics.
+
+Run it after installing the SDK artifact and configuring the Collector endpoint:
+
+```powershell
+$env:OTEL_EXPORTER_OTLP_PROTOCOL = 'http/protobuf'
+$env:OTEL_EXPORTER_OTLP_ENDPOINT = 'http://localhost:14318'
+$runId = 'consumer-all-20261124'
+mvn -B -ntp package exec:java '-Dexec.mainClass=net.openan.observability.consumer.ConsumerAllSignals' "-Dexec.args=$runId" '-Dexec.cleanupDaemonThreads=false'
+```
+
+The full consumer sets `service.name` to `sdk-consumer-all-<runId>`. Use this service name
+when querying Prometheus, OpenSearch, and Jaeger.
