@@ -8,7 +8,7 @@ import java.util.Set;
 public final class Definitions {
     public static final String PREFIX = "gen_ai.agent.a2at.";
     public static final String MESSAGE_LOG = PREFIX + "message";
-    public enum AttributeType { STRING, INTEGER, STRING_ARRAY }
+    public enum AttributeType { STRING, INTEGER, BOOLEAN, STRING_ARRAY }
     public record Attribute(String name, String signals, AttributeType type, Set<String> values) {}
     public record Metric(String name, boolean histogram, boolean integer, boolean a2a, String unit, Set<String> dimensions, Set<String> requiredDimensions) {}
     public record Signal(String extension, Set<String> attributes, Set<String> required) {}
@@ -22,8 +22,10 @@ public final class Definitions {
     public static final String STREAM_SPAN = A2A.stream();
     public static final String STREAM_EVENT = A2A.streamEvent();
     public static final String STREAM_ERROR = A2A.streamError();
+    public static final String STREAM_NEGOTIATION = A2A.streamNegotiation();
     public static final Set<String> A2A_SPAN_NAMES = A2A.traceNames();
     public static final Set<String> A2A_CLIENT_ONLY_SPAN_NAMES = A2A.clientOnlyTraces();
+    public static final Set<String> A2A_SERVER_ONLY_SPAN_NAMES = A2A.serverOnlyTraces();
     public static final Map<String, Signal> SPANS = CONFIGURATION.spans();
     public static final Map<String, Signal> LOGS = CONFIGURATION.logs();
     public static final Map<String, NamedSignal> NAMED_TRACES = CONFIGURATION.traces();
@@ -31,8 +33,12 @@ public final class Definitions {
     public static final Map<String, String> CONFIGURATION_VERSIONS = CONFIGURATION.versions();
     public static final Map<String, Metric> METRICS = CONFIGURATION.metrics();
     public static Signal span(String name, Signal extension) {
+        if (STREAM_NEGOTIATION.equals(name)) {
+            return new Signal(A2A.streamNegotiationSpan().extension(), union(A2A.span().attributes(), A2A.streamNegotiationSpan().attributes()),
+                A2A.streamNegotiationSpan().required());
+        }
         if (extension == null) return STREAM_EVENT.equals(name) ? A2A.streamEventSpan() : A2A.span();
-        if (!MESSAGE_SPAN.equals(name) && !STREAM_SPAN.equals(name)) throw new IllegalArgumentException();
+        if (!MESSAGE_SPAN.equals(name) && !STREAM_SPAN.equals(name) && !STREAM_NEGOTIATION.equals(name)) throw new IllegalArgumentException();
         return new Signal(extension.extension(), union(A2A.span().attributes(), extension.attributes()), extension.required());
     }
     public static Signal namedTrace(String name) { return find(NAMED_TRACES, name); }

@@ -19,6 +19,7 @@ import io.opentelemetry.api.trace.Tracer;
 import io.opentelemetry.context.Context;
 import java.util.HashMap;
 import java.util.Map;
+import java.time.Instant;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
@@ -64,10 +65,12 @@ public final class Observability {
         try {
             boolean streamEvent = Definitions.STREAM_EVENT.equals(name) || Definitions.STREAM_ERROR.equals(name);
             boolean clientOnly = Definitions.A2A_CLIENT_ONLY_SPAN_NAMES.contains(name);
+            boolean serverOnly = Definitions.A2A_SERVER_ONLY_SPAN_NAMES.contains(name);
             boolean a2a = Definitions.A2A_SPAN_NAMES.contains(name);
             Definitions.Signal definition;
             if (a2a) {
-                if (kind != SignalKind.CLIENT && (kind != SignalKind.SERVER || clientOnly)) throw new IllegalArgumentException();
+                if ((clientOnly && kind != SignalKind.CLIENT) || (serverOnly && kind != SignalKind.SERVER)
+                    || (!clientOnly && !serverOnly && kind != SignalKind.CLIENT && kind != SignalKind.SERVER)) throw new IllegalArgumentException();
                 Definitions.Signal extension = AttributesConverter.selectOptionalSignal(attributes, Definitions.SPANS);
                 definition = Definitions.span(name, extension);
             } else {
@@ -136,6 +139,29 @@ public final class Observability {
     public void log(String name, LogSeverity severity, String body, Map<String, ?> attributes, ObservationSpan span) {
         if (!enabled.get()) return;
         emitLog(name, severity, body, attributes, span == null ? Context.current() : span.context());
+    }
+    /** Emits a general OpenTelemetry log record without applying a structured A2A-T log schema. */
+    public void logRecord(LogSeverity severity, String body, Map<String, ?> attributes) {
+        logRecord(null, severity, body, attributes, null, null, Context.current());
+    }
+    /** Emits a general OpenTelemetry log record with optional event name, timestamp, exception, and explicit context. */
+    public void logRecord(String eventName, LogSeverity severity, String body, Map<String, ?> attributes, Instant timestamp,
+        Throwable exception, Context context) {
+        if (!enabled.get()) return;
+        try {
+            if (severity == null || body == null) throw new IllegalArgumentException();
+            Attributes logAttributes = AttributesConverter.convertGeneralLog(attributes);
+            if (exception != null) {
+                logAttributes = logAttributes.toBuilder().put("exception.type", exception.getClass().getName())
+                    .put("exception.message", AttributesConverter.clean(exception.toString())).build();
+            }
+            var record = logger.logRecordBuilder().setSeverity(Severity.valueOf(severity.name()))
+                .setBody(AttributesConverter.clean(body)).setAllAttributes(logAttributes)
+                .setContext(context == null ? Context.current() : context);
+            if (eventName != null && !eventName.isBlank()) record.setEventName(AttributesConverter.clean(eventName));
+            if (timestamp != null) record.setTimestamp(timestamp);
+            record.emit();
+        } catch (RuntimeException e) { DIAGNOSTICS.warning("Observation general log rejected"); }
     }
     private void emitLog(String name, LogSeverity severity, String body, Map<String, ?> attributes, Context context) {
         try {
