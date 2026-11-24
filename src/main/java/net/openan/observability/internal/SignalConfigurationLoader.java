@@ -113,14 +113,19 @@ final class SignalConfigurationLoader {
         String stream = string(specialTraces.get("stream"), path + ".special_traces.stream");
         String streamEvent = string(specialTraces.get("stream_event"), path + ".special_traces.stream_event");
         String streamError = string(specialTraces.get("stream_error"), path + ".special_traces.stream_error");
+        String streamNegotiation = string(specialTraces.get("stream_negotiation"), path + ".special_traces.stream_negotiation");
         Set<String> traceNames = strings(protocol.get("trace_names"), path + ".trace_names");
         Set<String> clientOnlyTraces = strings(protocol.get("client_only_traces"), path + ".client_only_traces");
-        if (!traceNames.containsAll(Set.of(message, stream, streamEvent, streamError)) || !traceNames.containsAll(clientOnlyTraces)) {
+        Set<String> serverOnlyTraces = strings(protocol.get("server_only_traces"), path + ".server_only_traces");
+        if (!traceNames.containsAll(Set.of(message, stream, streamEvent, streamError, streamNegotiation))
+            || !traceNames.containsAll(clientOnlyTraces) || !traceNames.containsAll(serverOnlyTraces)
+            || !java.util.Collections.disjoint(clientOnlyTraces, serverOnlyTraces)) {
             throw new IllegalStateException("A2A special traces must be listed at " + path);
         }
         return new A2aProtocol(string(protocol.get("attribute_prefix"), path + ".attribute_prefix"), message, stream, streamEvent,
-            streamError, traceNames, clientOnlyTraces, signal(null, protocol.get("span_attributes"), path + ".span_attributes"),
-            signal(null, protocol.get("stream_event_attributes"), path + ".stream_event_attributes"));
+            streamError, streamNegotiation, traceNames, clientOnlyTraces, serverOnlyTraces, signal(null, protocol.get("span_attributes"), path + ".span_attributes"),
+            signal(null, protocol.get("stream_event_attributes"), path + ".stream_event_attributes"),
+            signal("negotiation-t", protocol.get("stream_negotiation_attributes"), path + ".stream_negotiation_attributes"));
     }
     @SuppressWarnings("unchecked")
     private static Map<String, Object> map(Object value, String path) {
@@ -156,7 +161,8 @@ final class SignalConfigurationLoader {
         Map<String, Definitions.Signal> logs, Map<String, Definitions.NamedSignal> traces,
         Map<String, Definitions.NamedSignal> namedLogs, Map<String, Definitions.Attribute> attributes,
         Map<String, String> versions, A2aProtocol a2a) {}
-    record A2aProtocol(String attributePrefix, String message, String stream, String streamEvent, String streamError,
-        Set<String> traceNames, Set<String> clientOnlyTraces, Definitions.Signal span, Definitions.Signal streamEventSpan) {}
+    record A2aProtocol(String attributePrefix, String message, String stream, String streamEvent, String streamError, String streamNegotiation,
+        Set<String> traceNames, Set<String> clientOnlyTraces, Set<String> serverOnlyTraces, Definitions.Signal span, Definitions.Signal streamEventSpan,
+        Definitions.Signal streamNegotiationSpan) {}
     private SignalConfigurationLoader() {}
 }

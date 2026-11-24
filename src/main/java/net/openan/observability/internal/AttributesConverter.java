@@ -45,6 +45,9 @@ public final class AttributesConverter {
                 long number = ((Number) value).longValue();
                 if (key.equals("parts.number") && number < 0) throw new IllegalArgumentException();
                 output.put(definition.name(), number);
+            } else if (definition.type() == Definitions.AttributeType.BOOLEAN) {
+                if (!(value instanceof Boolean)) throw new IllegalArgumentException();
+                output.put(definition.name(), (Boolean) value);
             } else if (definition.type() == Definitions.AttributeType.STRING_ARRAY) {
                 if (!(value instanceof java.util.List<?> values) || values.isEmpty()) throw new IllegalArgumentException();
                 java.util.List<String> cleaned = new java.util.ArrayList<>();
@@ -64,6 +67,31 @@ public final class AttributesConverter {
                 if (key.equals("operation.name") && s.isBlank()) throw new IllegalArgumentException();
                 output.put(definition.name(), clean(s));
             }
+        }
+        return output.build();
+    }
+    public static Attributes convertGeneralLog(Map<String, ?> input) {
+        if (input == null) return Attributes.empty();
+        AttributesBuilder output = Attributes.builder();
+        for (Map.Entry<String, ?> item : input.entrySet()) {
+            if (item.getKey() == null || item.getKey().isBlank() || item.getValue() == null) throw new IllegalArgumentException();
+            String key = item.getKey();
+            Object value = item.getValue();
+            if (value instanceof String text) output.put(key, clean(text));
+            else if (value instanceof Boolean flag) output.put(key, flag);
+            else if (value instanceof Byte || value instanceof Short || value instanceof Integer || value instanceof Long) output.put(key, ((Number) value).longValue());
+            else if (value instanceof Float || value instanceof Double) {
+                double number = ((Number) value).doubleValue();
+                if (!Double.isFinite(number)) throw new IllegalArgumentException();
+                output.put(key, number);
+            } else if (value instanceof java.util.List<?> values) {
+                java.util.List<String> cleaned = new java.util.ArrayList<>();
+                for (Object itemValue : values) {
+                    if (!(itemValue instanceof String text)) throw new IllegalArgumentException();
+                    cleaned.add(clean(text));
+                }
+                output.put(io.opentelemetry.api.common.AttributeKey.stringArrayKey(key), cleaned);
+            } else throw new IllegalArgumentException();
         }
         return output.build();
     }

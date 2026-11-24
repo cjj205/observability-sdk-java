@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 import io.opentelemetry.api.common.AttributeKey;
 import io.opentelemetry.sdk.OpenTelemetrySdk;
+import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.sdk.metrics.SdkMeterProvider;
 import io.opentelemetry.sdk.testing.exporter.InMemoryMetricReader;
 import io.opentelemetry.sdk.testing.exporter.InMemorySpanExporter;
@@ -32,8 +33,40 @@ class A2ACoverageTest {
                 observe.trace(method, SignalKind.CLIENT, Map.of()).end();
                 observe.trace(method, SignalKind.SERVER, Map.of()).end();
             }
+            for (String method : List.of("GetExtendedAgentCard", "SendPushNotification")) {
+                observe.trace(method, SignalKind.CLIENT, Map.of()).end();
+                observe.trace(method, SignalKind.SERVER, Map.of()).end();
+            }
             observe.trace("agent/get", SignalKind.CLIENT, Map.of()).end();
-            assertEquals(24, spans.getFinishedSpanItems().size());
+            assertEquals(26, spans.getFinishedSpanItems().size());
+        }
+    }
+
+    @Test void exportsA2AAttributesAndServerNegotiation() {
+        var spans = InMemorySpanExporter.create();
+        try (var sdk = tracingSdk(spans)) {
+            var observe = new Observability(sdk);
+            var entry = observe.trace("SendStreamingMessage", SignalKind.SERVER, Map.of("transport", "jsonrpc",
+                "protocol.version", "0.3", "gen_ai.response.model", "model-1", "usage.input_tokens", 12,
+                "usage.output_tokens", 8));
+            observe.trace("SendStreamingMessage-negotiation", SignalKind.SERVER, Map.of("extension.name", "negotiation-t",
+                "negotiation.id", "n-1", "negotiation.max_rounds", 3), entry).end();
+            observe.trace("SendStreamingMessage-event", SignalKind.SERVER, Map.of("task.status.state", "working",
+                "artifact.name", "report", "artifact.append", true, "artifact.last_chunk", false)).end();
+            observe.trace("SendPushNotification", SignalKind.CLIENT, Map.of("push_notification.event_kind", "status")).end();
+            observe.trace("GetExtendedAgentCard", SignalKind.SERVER, Map.of()).end();
+            entry.end();
+
+            assertEquals(4, spans.getFinishedSpanItems().size());
+            var negotiation = spans.getFinishedSpanItems().get(0);
+            assertEquals("SendStreamingMessage-negotiation", negotiation.getName());
+            assertEquals(Span.fromContext(entry.context()).getSpanContext(), negotiation.getParentSpanContext());
+            assertEquals(3L, negotiation.getAttributes().get(AttributeKey.longKey("gen_ai.agent.a2at.negotiation.max_rounds")));
+            var event = spans.getFinishedSpanItems().get(1);
+            assertEquals(true, event.getAttributes().get(AttributeKey.booleanKey("a2a.artifact.append")));
+            assertEquals("working", event.getAttributes().get(AttributeKey.stringKey("gen_ai.agent.a2a.task.status.state")));
+            assertEquals("status", spans.getFinishedSpanItems().get(2).getAttributes()
+                .get(AttributeKey.stringKey("gen_ai.agent.a2a.push_notification.event_kind")));
         }
     }
 
