@@ -1,3 +1,22 @@
+/*
+ * Copyright (c) 2026 Huawei Technologies Co., Ltd.
+ * All Rights Reserved.
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ *    Licensed under the Apache License, Version 2.0 (the "License"); you may
+ *    not use this file except in compliance with the License. You may obtain
+ *    a copy of the License at
+ *
+ *         http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *    Unless required by applicable law or agreed to in writing, software
+ *    distributed under the License is distributed on an AS IS BASIS, WITHOUT
+ *    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ *    License for the specific language governing permissions and limitations
+ *    under the License.
+ */
+
 package net.openan.observability;
 
 import net.openan.observability.internal.Definitions;
@@ -5,6 +24,7 @@ import net.openan.observability.internal.Definitions;
 import static org.junit.jupiter.api.Assertions.*;
 
 import io.opentelemetry.api.common.AttributeKey;
+import io.opentelemetry.api.trace.SpanKind;
 import io.opentelemetry.sdk.OpenTelemetrySdk;
 import io.opentelemetry.sdk.logs.SdkLoggerProvider;
 import io.opentelemetry.sdk.logs.export.SimpleLogRecordProcessor;
@@ -19,6 +39,7 @@ import org.junit.jupiter.api.Test;
 
 class WorkflowCoverageTest {
     private static final String P = Definitions.PREFIX;
+    private static final String INVALID_PARENT_SPAN_ID = "0000000000000000";
 
     @Test void exportsWorkflowTraceMetricsAndLogsWithConfiguredAttributeSets() {
         var spans = InMemorySpanExporter.create();
@@ -67,5 +88,48 @@ class WorkflowCoverageTest {
             assertTrue(metrics.collectAllMetrics().isEmpty());
             assertTrue(logs.getFinishedLogRecordItems().isEmpty());
         }
+    }
+
+    @Test void modelsWorkflowAsTheRootOfAnAgentA2AOperationTrace() {
+        var spans = InMemorySpanExporter.create();
+        try (var sdk = OpenTelemetrySdk.builder().setTracerProvider(SdkTracerProvider.builder()
+            .addSpanProcessor(SimpleSpanProcessor.create(spans)).build()).build()) {
+            var observe = new Observability(sdk);
+            var workflow = observe.trace("a2at.workflow", SignalKind.INTERNAL, Map.of(
+                "workflow.id", "wf-1", "workflow.type", "fault-diagnosis", "workflow.status", "running"));
+            var step = observe.trace("a2at.step.collect", SignalKind.INTERNAL, Map.of(
+                "workflow.step", "collect", "workflow.step.index", 1, "workflow.step.status", "running"), workflow);
+            var agent = observe.trace("a2at.substep.analyze", SignalKind.INTERNAL, Map.of(
+                "gen_ai.agent.name", "diagnosis-agent", "substep.name", "analyze", "substep.status", "running"), step);
+            var client = observe.trace("SendMessage", SignalKind.CLIENT, Map.of(
+                "extension.name", "task-t", "task.type", "diagnosis", "task.object", "fault"), agent);
+            var server = observe.trace("SendMessage", SignalKind.SERVER, Map.of(
+                "extension.name", "task-t", "task.type", "diagnosis", "task.object", "fault"), client);
+            server.end(); client.end(); agent.end(); step.end(); workflow.end();
+
+            var exported = spans.getFinishedSpanItems();
+            var workflowData = find(exported, "a2at.workflow", SpanKind.INTERNAL);
+            var stepData = find(exported, "a2at.step.collect", SpanKind.INTERNAL);
+            var agentData = find(exported, "a2at.substep.analyze", SpanKind.INTERNAL);
+            var clientData = find(exported, "SendMessage", SpanKind.CLIENT);
+            var serverData = find(exported, "SendMessage", SpanKind.SERVER);
+            assertEquals(INVALID_PARENT_SPAN_ID, workflowData.getParentSpanId());
+            assertChild(workflowData, stepData);
+            assertChild(stepData, agentData);
+            assertChild(agentData, clientData);
+            assertChild(clientData, serverData);
+        }
+    }
+
+    private static io.opentelemetry.sdk.trace.data.SpanData find(
+            java.util.List<io.opentelemetry.sdk.trace.data.SpanData> spans, String name, SpanKind kind) {
+        return spans.stream().filter(span -> name.equals(span.getName()) && kind == span.getKind())
+            .findFirst().orElseThrow();
+    }
+
+    private static void assertChild(io.opentelemetry.sdk.trace.data.SpanData parent,
+            io.opentelemetry.sdk.trace.data.SpanData child) {
+        assertEquals(parent.getSpanId(), child.getParentSpanId());
+        assertEquals(parent.getTraceId(), child.getTraceId());
     }
 }

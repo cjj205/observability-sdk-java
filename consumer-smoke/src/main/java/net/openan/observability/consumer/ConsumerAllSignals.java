@@ -1,3 +1,22 @@
+/*
+ * Copyright (c) 2026 Huawei Technologies Co., Ltd.
+ * All Rights Reserved.
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ *    Licensed under the Apache License, Version 2.0 (the "License"); you may
+ *    not use this file except in compliance with the License. You may obtain
+ *    a copy of the License at
+ *
+ *         http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *    Unless required by applicable law or agreed to in writing, software
+ *    distributed under the License is distributed on an AS IS BASIS, WITHOUT
+ *    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ *    License for the specific language governing permissions and limitations
+ *    under the License.
+ */
+
 package net.openan.observability.consumer;
 
 import java.util.HashMap;
@@ -30,9 +49,38 @@ public final class ConsumerAllSignals {
     }
 
     private static void emitCorrelatedScenario(Observability observe, String runId) {
+        Map<String, Object> workflow = Map.of(
+            "workflow.id", "workflow-" + runId, "workflow.type", "consumer-all", "workflow.status", "completed",
+            "workflow.session_id", "session-" + runId);
+        Map<String, Object> step = Map.of(
+            "workflow.step", "collect", "workflow.step.index", 1, "workflow.step.status", "completed",
+            "workflow.step.owner_agent", "consumer-agent");
+        try (var workflowSpan = observe.trace("a2at.workflow", SignalKind.INTERNAL, workflow)) {
+            try (var workflowScope = workflowSpan.makeCurrent()) {
+                observe.log("gen_ai.agent.a2at.workflow", LogSeverity.INFO, "Workflow completed", Map.ofEntries(
+                    Map.entry("workflow.id", "workflow-" + runId), Map.entry("workflow.type", "consumer-all"),
+                    Map.entry("workflow.status", "completed"), Map.entry("workflow.session_id", "session-" + runId),
+                    Map.entry("business.domain", "observability"), Map.entry("business.customer", "consumer")), workflowSpan);
+                observe.metric("workflow.duration", 90.0, Map.of("workflow.type", "consumer-all", "workflow.status", "completed"));
+                observe.metric("workflow.count", 1, Map.of("workflow.type", "consumer-all", "workflow.status", "completed"));
+                try (var stepSpan = observe.trace("a2at.step.collect", SignalKind.INTERNAL, step, workflowSpan)) {
+                    try (var stepScope = stepSpan.makeCurrent()) {
+                        observe.log("gen_ai.agent.a2at.step", LogSeverity.INFO, "Workflow step completed", step, stepSpan);
+                        observe.metric("step.duration", 40.0, Map.of(
+                            "workflow.step", "collect", "gen_ai.agent.name", "consumer-agent"));
+                        emitAgentSignals(observe, runId, stepSpan);
+                        stepSpan.ok();
+                    }
+                }
+                workflowSpan.ok();
+            }
+        }
+    }
+
+    private static void emitTaskFlow(Observability observe, String runId, ObservationSpan parent) {
         Map<String, Object> task = merge(a2aAttributes("SendMessage", runId), Map.of(
             "extension.name", "task-t", "task.type", "consumer-all", "task.object", runId));
-        try (var client = observe.trace("SendMessage", SignalKind.CLIENT, task)) {
+        try (var client = observe.trace("SendMessage", SignalKind.CLIENT, task, parent)) {
             try (var clientScope = client.makeCurrent()) {
                 observe.log(MESSAGE_LOG, LogSeverity.INFO, "Task request accepted", Map.of(
                     "extension.name", "task-t", "task.type", "consumer-all", "task.object", runId), client);
@@ -41,10 +89,6 @@ public final class ConsumerAllSignals {
                 observe.metric("gen_ai.client.operation.duration", 0.12, Map.of("operation.name", "SendMessage"));
                 try (var server = observe.trace("SendMessage", SignalKind.SERVER, task, client)) {
                     try (var serverScope = server.makeCurrent()) {
-                        emitA2aOperationPairs(observe, runId, server);
-                        emitStreamingFlow(observe, runId, server);
-                        emitWorkflowAndAgentFlow(observe, runId, server);
-                        emitExtensionFlows(observe, runId, server);
                         server.ok();
                     }
                 }
@@ -98,36 +142,7 @@ public final class ConsumerAllSignals {
         }
     }
 
-    private static void emitWorkflowAndAgentFlow(Observability observe, String runId, ObservationSpan parent) {
-        Map<String, Object> workflow = Map.of(
-            "workflow.id", "workflow-" + runId, "workflow.type", "consumer-all", "workflow.status", "completed",
-            "workflow.session_id", "session-" + runId);
-        Map<String, Object> step = Map.of(
-            "workflow.step", "collect", "workflow.step.index", 1, "workflow.step.status", "completed",
-            "workflow.step.owner_agent", "consumer-agent");
-        try (var workflowSpan = observe.trace("a2at.workflow", SignalKind.INTERNAL, workflow, parent)) {
-            try (var workflowScope = workflowSpan.makeCurrent()) {
-                observe.log("gen_ai.agent.a2at.workflow", LogSeverity.INFO, "Workflow completed", Map.ofEntries(
-                    Map.entry("workflow.id", "workflow-" + runId), Map.entry("workflow.type", "consumer-all"),
-                    Map.entry("workflow.status", "completed"), Map.entry("workflow.session_id", "session-" + runId),
-                    Map.entry("business.domain", "observability"), Map.entry("business.customer", "consumer")), workflowSpan);
-                observe.metric("workflow.duration", 90.0, Map.of("workflow.type", "consumer-all", "workflow.status", "completed"));
-                observe.metric("workflow.count", 1, Map.of("workflow.type", "consumer-all", "workflow.status", "completed"));
-                try (var stepSpan = observe.trace("a2at.step.collect", SignalKind.INTERNAL, step, workflowSpan)) {
-                    try (var stepScope = stepSpan.makeCurrent()) {
-                        observe.log("gen_ai.agent.a2at.step", LogSeverity.INFO, "Workflow step completed", step, stepSpan);
-                        observe.metric("step.duration", 40.0, Map.of(
-                            "workflow.step", "collect", "gen_ai.agent.name", "consumer-agent"));
-                        emitAgentSignals(observe, stepSpan);
-                        stepSpan.ok();
-                    }
-                }
-                workflowSpan.ok();
-            }
-        }
-    }
-
-    private static void emitAgentSignals(Observability observe, ObservationSpan parent) {
+    private static void emitAgentSignals(Observability observe, String runId, ObservationSpan parent) {
         Map<String, Object> substep = Map.of(
             "gen_ai.agent.name", "consumer-agent", "substep.name", "analyze", "substep.status", "completed");
         try (var span = observe.trace("a2at.substep.analyze", SignalKind.INTERNAL, substep, parent)) {
@@ -142,6 +157,10 @@ public final class ConsumerAllSignals {
                     "gen_ai.agent.name", "consumer-agent", "substep.name", "analyze"));
                 observe.metric("gen_ai.client.token.usage", 34, Map.of(
                     "gen_ai.agent.name", "consumer-agent", "gen_ai.request.model", "model-1", "gen_ai.token.type", "input"));
+                emitTaskFlow(observe, runId, span);
+                emitA2aOperationPairs(observe, runId, span);
+                emitStreamingFlow(observe, runId, span);
+                emitExtensionFlows(observe, runId, span);
                 span.ok();
             }
         }
