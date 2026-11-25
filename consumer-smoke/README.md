@@ -22,27 +22,35 @@ The app creates one Task-T Span, a linked message Log, and the `task.duration` a
 ## Full signal consumer
 
 `ConsumerAllSignals` is separate from the fast smoke consumer. It emits every configured
-signal family as one workflow-rooted business trace. Workflow, Step, Agent Substep, and
-synchronous A2A client/server spans use parent-child relationships and share the same task,
-context, and message identifiers. Logs are attached to their corresponding business span.
-Streaming event and end spans are intentionally emitted as Span Links, which is the SDK's
-configured model for asynchronous stream events.
+signal family through three workflow-rooted business scenarios. Each scenario has its own
+task, context, and message identifiers. Workflow, Step, Agent Substep, and synchronous A2A
+client/server spans use parent-child relationships. Logs are attached to their corresponding
+business span. Streaming event and end spans are intentionally emitted as Span Links, which
+is the SDK's configured model for asynchronous stream events.
 
 ```text
-a2at.workflow
-└─ a2at.step.collect
-   └─ a2at.substep.analyze
-      ├─ SendMessage CLIENT (Task-T) → SendMessage SERVER
-      ├─ A2A client/server operation pairs and push-related client spans
-      ├─ SendStreamingMessage CLIENT → SERVER → stream negotiation
-      │  ├─ SendStreamingMessage-event  -- Span Link --> stream client
-      │  └─ SendStreamingMessage-end    -- Span Link --> stream client
-      └─ Negotiation-T / Notification-T / Authorization-T message and stream spans
+Workflow: a2a-execution (completed)
+└─ Step: dispatch → Agent Substep: analyze
+   ├─ GetExtendedAgentCard
+   ├─ Authorization-T → Task-T SendMessage CLIENT → SERVER
+   ├─ SendStreamingMessage CLIENT → SERVER → stream negotiation
+   │  ├─ SendStreamingMessage-event  -- Span Link --> stream client
+   │  └─ SendStreamingMessage-end    -- Span Link --> stream client
+   ├─ Negotiation-T message and stream exchange
+   └─ Notification-T message and stream exchange
+
+Workflow: task-management (cancelled)
+└─ Step: manage-task → Agent Substep: analyze
+   └─ ListTasks / GetTask / SubscribeToTask / CancelTask
+
+Workflow: push-notification-configuration (completed)
+└─ Step: manage-push → Agent Substep: analyze
+   └─ Create / Get / List / Delete push configuration → SendPushNotification
 ```
 
 The flow covers:
 
-- A2A client/server operations, streaming event/end, stream negotiation, and push-related traces;
+- A2A client/server operations, streaming event/end, stream negotiation, and push-related traces across independent workflows;
 - A2A operation and streaming metrics;
 - Task-T, Negotiation-T, Notification-T, and Authorization-T message/stream traces, logs, and metrics;
 - Workflow and step traces, logs, and metrics;
