@@ -67,3 +67,16 @@ mvn -B -ntp package exec:java '-Dexec.mainClass=net.openan.observability.consume
 
 The full consumer sets `service.name` to `sdk-consumer-all-<runId>`. Use this service name
 when querying Prometheus, OpenSearch, and Jaeger.
+
+## Complaint-handling workflow example
+
+`ConsumerComplaintHandling` models the PR #29 IG1504D enterprise private-line SLA complaint workflow.
+It creates one Workflow root with seven ordered steps: intake, recognition, localization, root-cause
+location, restoration, SLA verification, and closure. The workflow uses WAIMO Complaint Agent,
+Transport Complaint Agent, and the West-GD/East-GD NETSpirit agents; root-cause location emits
+parallel A2A message pairs to both regional agents.
+
+```powershell
+$runId = 'complaint-20261125'
+mvn -B -ntp package exec:java '-Dexec.mainClass=net.openan.observability.consumer.ConsumerComplaintHandling' "-Dexec.args=$runId" '-Dexec.cleanupDaemonThreads=false'
+```
