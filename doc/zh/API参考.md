@@ -106,7 +106,47 @@ ObservationSpan trace(String name, SignalKind kind, Map<String, ?> attributes,
                       ObservationSpan parent)
 ```
 
-创建并返回一个 Span 包装对象。第二个重载可显式指定父 Span；对于 `SendStreamingMessage-event`，该父对象作为 Span Link 使用。
+创建并返回一个 Span 包装对象。第二个重载可显式指定父 Span。普通 Span 按以下顺序选择父上下文。
+
+1. 提供有效的 `parent` 时，使用该句柄的上下文。
+2. 省略 `parent` 或传入 `null` 时，读取 `Context.current()`，使用当前上下文中的 Span。
+3. 没有有效父 Span 时，创建新 Trace 的根 Span。
+
+子 Span 沿用父 Span 的 Trace ID，生成自己的 Span ID，并将 `parentSpanId` 设为父 Span 的 Span ID。相同的任务 ID 属性用于查询关联，父子关系由上下文决定。
+
+#### 同线程自动关联
+
+创建 Span 后调用 `makeCurrent()`，将它的上下文设为当前上下文。在返回的 `Scope` 作用范围内，同线程后续调用 `trace()` 会自动读取该上下文。
+
+```java
+Map<String, Object> attributes = Map.of("operation.name", "SendMessage");
+try (var parent = observe.trace("SendMessage", SignalKind.CLIENT, attributes);
+     var scope = parent.makeCurrent()) {
+    try (var child = observe.trace("SendMessage", SignalKind.SERVER, attributes)) {
+        // child 和 parent 共用 Trace ID，child.parentSpanId 指向 parent。
+        child.ok();
+    }
+    parent.ok();
+}
+```
+
+`trace()` 创建句柄，`makeCurrent()` 建立当前上下文。关闭 `Scope` 会恢复之前的上下文，关闭 `ObservationSpan` 会结束 Span。建议按示例使用 try-with-resources，确保两者都能关闭。
+
+#### 跨线程与跨进程关联
+
+线程池切换时，由调用方传递上下文，或者将父 `ObservationSpan` 传给第四个参数。显式父句柄可以省去对子线程当前上下文的依赖。
+
+```java
+try (var child = observe.trace("SendMessage", SignalKind.SERVER, attributes, parent)) {
+    child.ok();
+}
+```
+
+异步任务应在其操作完成后结束自己的 Span，并安排父操作的生命周期。跨进程时，发送端调用 `TraceContextPropagation.inject()` 写入 W3C 请求头，接收端调用 `extractToCurrent()` 后创建服务端 Span，详见本文 `TraceContextPropagation` 一节。
+
+#### 流事件和流错误的 Link
+
+`SendStreamingMessage-event` 和 `SendStreamingMessage-end` 创建独立根 Span，并将显式父句柄或当前上下文中的有效 Span 记录为 Span Link。这些信号通过 Link 关联原调用。
 
 | `SignalKind` | 用途 |
 |---|---|

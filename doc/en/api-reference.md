@@ -102,7 +102,47 @@ ObservationSpan trace(String name, SignalKind kind, Map<String, ?> attributes,
                       ObservationSpan parent)
 ```
 
-Creates an `ObservationSpan`. The second overload accepts an explicit parent. For `SendStreamingMessage-event`, that object is used as a Span Link.
+Creates an `ObservationSpan`. The second overload accepts an explicit parent. Ordinary spans select their parent context in this order.
+
+1. When a valid `parent` handle is supplied, use its context.
+2. When `parent` is omitted or `null`, read the span from `Context.current()`.
+3. When that context has no valid parent span, start a root span in a new trace.
+
+A child inherits the parent's Trace ID, receives its own Span ID, and records the parent's Span ID as `parentSpanId`. Task ID attributes support queries. Context establishes the parent relationship.
+
+#### Automatic association on the same thread
+
+Call `makeCurrent()` after creating the parent span. Within the returned `Scope`, subsequent calls to `trace()` on that thread read the parent's context automatically.
+
+```java
+Map<String, Object> attributes = Map.of("operation.name", "SendMessage");
+try (var parent = observe.trace("SendMessage", SignalKind.CLIENT, attributes);
+     var scope = parent.makeCurrent()) {
+    try (var child = observe.trace("SendMessage", SignalKind.SERVER, attributes)) {
+        // Both share a Trace ID; child.parentSpanId identifies parent.
+        child.ok();
+    }
+    parent.ok();
+}
+```
+
+`trace()` creates the handle. `makeCurrent()` installs its context. Closing the `Scope` restores the previous context, and closing the `ObservationSpan` ends the span. Use try-with-resources as shown to close both.
+
+#### Association across threads and processes
+
+When work moves to a thread pool, propagate context or pass the parent `ObservationSpan` as the fourth argument. An explicit parent supplies context independently of the worker thread's current context.
+
+```java
+try (var child = observe.trace("SendMessage", SignalKind.SERVER, attributes, parent)) {
+    child.ok();
+}
+```
+
+End each asynchronous span when its operation completes, and manage the parent operation's lifetime accordingly. Across processes, call `TraceContextPropagation.inject()` on the sender and `extractToCurrent()` on the receiver before creating the server span. See the `TraceContextPropagation` section below.
+
+#### Links for stream events and errors
+
+`SendStreamingMessage-event` and `SendStreamingMessage-end` start independent root spans. They link to the valid span from the explicit parent handle or current context through a Span Link.
 
 | `SignalKind` | Use |
 |---|---|
