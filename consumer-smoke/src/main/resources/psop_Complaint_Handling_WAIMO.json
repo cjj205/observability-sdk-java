@@ -1,0 +1,148 @@
+{
+  "id": "1d4c367d-9f0c-4400-85d2-caaf21ee37af-waimo",
+  "name": "IG1504D_AN_L4_Enterprise_Private_Line_Complaint_Handling_WAIMO_Package",
+  "description": "WAIMO视角PSOP：WAIMO Complaint Agent作为端到端投诉编排者，只调度Transport Complaint Agent，不感知OMC级诊断、授权与修复细节",
+  "created_at": "2026-11-25T11:21:39.277607",
+  "steps": [
+    {
+      "name": "step1",
+      "type": "AllSuccess",
+      "subtasks": [
+        {
+          "task_id": "a5019a01-0001-4002-9001-000000000001",
+          "description": "投诉受理：从流程中心抓取跨地市专线SLA劣化投诉工单，完成投诉受理",
+          "agent": "WAIMO Complaint Agent",
+          "skill": "Complaint Ticket Intake",
+          "status": "pending"
+        }
+      ],
+      "next": [
+        {
+          "step": "step2",
+          "condition": ""
+        }
+      ]
+    },
+    {
+      "name": "step2",
+      "type": "AllSuccess",
+      "subtasks": [
+        {
+          "task_id": "a5019a01-0001-4002-9001-000000000002",
+          "description": "投诉识别：识别投诉现象与投诉意图，判定为传输专线质差投诉场景",
+          "agent": "WAIMO Complaint Agent",
+          "skill": "Complaint Intent Recognition",
+          "status": "pending"
+        }
+      ],
+      "next": [
+        {
+          "step": "step3",
+          "condition": ""
+        }
+      ]
+    },
+    {
+      "name": "step3",
+      "type": "AllSuccess",
+      "subtasks": [
+        {
+          "task_id": "a5019a01-0001-4002-9001-000000000003",
+          "description": "定界定位：核查专线业务状态、路由与告警，输出定界结论",
+          "agent": "WAIMO Complaint Agent",
+          "skill": "Complaint Localization",
+          "status": "pending"
+        }
+      ],
+      "next": [
+        {
+          "step": "step4",
+          "condition": "定界结论为传输大网线路问题"
+        }
+      ]
+    },
+    {
+      "name": "step4",
+      "type": "AllSuccess",
+      "subtasks": [
+        {
+          "task_id": "a5019a01-0001-4002-9001-000000000011",
+          "description": "Transport技能检索：定界结论确认后，按技能「专线投诉诊断」检索注册中心，确定Transport Complaint Agent承接诊断任务",
+          "agent": "WAIMO Complaint Agent",
+          "skill": "Agent Card Search",
+          "status": "pending"
+        }
+      ],
+      "next": [
+        {
+          "step": "step5",
+          "condition": ""
+        }
+      ]
+    },
+    {
+      "name": "step5",
+      "type": "AllSuccess",
+      "subtasks": [
+        {
+          "task_id": "a5019a01-0001-4002-9001-000000000004",
+          "description": "Transport投诉处置：承接投诉诊断任务，基于OMC根因诊断结果中的修复建议完成授权校验、授权请求、方案上报、抢通执行与结果上报；WAIMO不感知OMC级细节",
+          "agent": "Transport Complaint Agent",
+          "skill": "Leased-Line Complaint Diagnosis",
+          "status": "pending"
+        }
+      ],
+      "next": [
+        {
+          "step": "step6",
+          "condition": "Transport返回处置成功"
+        },
+        {
+          "step": "step7",
+          "condition": "Transport返回授权失败或执行失败"
+        }
+      ]
+    },
+    {
+      "name": "step6",
+      "type": "AllSuccess",
+      "subtasks": [
+        {
+          "task_id": "a5019a01-0001-4002-9001-000000000010",
+          "description": "投诉报结：基于Transport处置结果确认问题已解决，客户回访，投诉工单闭环，处理信息回传流程中心",
+          "agent": "WAIMO Complaint Agent",
+          "skill": "Complaint Closure",
+          "status": "pending"
+        }
+      ],
+      "next": [
+        {
+          "step": "end",
+          "condition": ""
+        }
+      ]
+    },
+    {
+      "name": "step7",
+      "type": "AllSuccess",
+      "subtasks": [
+        {
+          "task_id": "a5019a01-0001-4002-9001-000000000008",
+          "description": "人工修复：基于Transport返回的授权失败或执行失败原因，创建人工修复任务并跟踪完成情况",
+          "agent": "WAIMO Complaint Agent",
+          "skill": "Manual Repair Dispatch",
+          "status": "pending"
+        }
+      ],
+      "next": [
+        {
+          "step": "step6",
+          "condition": "人工修复完成"
+        }
+      ]
+    }
+  ],
+  "related_preflow": "9eb6174d-affa-4204-895c-f4ca551c018a",
+  "user_intent": null,
+  "tags": ["waimo-view", "layered-orchestration"]
+}
