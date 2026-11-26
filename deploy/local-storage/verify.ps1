@@ -44,6 +44,7 @@ $result = [ordered]@{
     startedAtUtc = $startedAt
     completedAtUtc = $null
     metricStored = $false
+    exemplarStored = $false
     logStored = $false
     traceStored = $false
     status = 'running'
@@ -169,6 +170,15 @@ try {
         $response.status -eq 'success' -and @($response.data.result).Count -gt 0
     }
     $result.metricStored = $true
+
+    $exemplarQuery = [uri]::EscapeDataString(('{service_name="{0}"}' -f $serviceName))
+    $exemplarEnd = [DateTimeOffset]::UtcNow.ToUnixTimeSeconds()
+    $exemplarStart = $exemplarEnd - 300
+    Wait-Until 'metric exemplar in Prometheus' {
+        $response = Invoke-RestMethod "http://127.0.0.1:19090/api/v1/query_exemplars?query=$exemplarQuery&start=$exemplarStart&end=$exemplarEnd"
+        $response.status -eq 'success' -and @($response.data | ForEach-Object { $_.exemplars } | Where-Object { $_ }).Count -gt 0
+    }
+    $result.exemplarStored = $true
 
     $logRequest = @{ size = 1; query = @{ match_phrase = @{ 'resource.attributes.service.name' = $serviceName } } } | ConvertTo-Json -Depth 8 -Compress
     Wait-Until 'log in OpenSearch' {

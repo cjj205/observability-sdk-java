@@ -49,10 +49,21 @@ Invoke-RestMethod 'http://127.0.0.1:19200/a2at-logs-v2/_search?pretty'
 
 In Jaeger UI, search by the SDK `service.name`. Prometheus counters use the `_total` suffix. Query OpenSearch logs by `resource.attributes.service.name` when separating test runs.
 
+The Prometheus service enables Exemplar storage with a capacity of 100,000 samples. Histogram Metrics recorded with the SDK overload that accepts `ObservationSpan` can be queried with the Prometheus Exemplar API and contain `trace_id` and `span_id` labels. For example, `task.duration` is a Histogram; the current Java OTel Counter aggregation does not export Exemplars:
+
+```powershell
+$end = [DateTimeOffset]::UtcNow.ToUnixTimeSeconds()
+$start = $end - 300
+$query = [uri]::EscapeDataString('{service_name="a2at-local-storage"}')
+Invoke-RestMethod "http://127.0.0.1:19090/api/v1/query_exemplars?query=$query&start=$start&end=$end"
+```
+
+Exemplars are retained in Prometheus's local, bounded buffer. They are intended for short-window drill-down from a metric sample to a trace; use Jaeger for trace retention and search.
+
 ## Run the storage verification
 
 `verify.ps1` starts the Compose stack, installs the SDK artifact, runs the independent
-consumer, and waits until the metric, log, and trace can each be read from their
+consumer, and waits until the metric, its Exemplar, log, and trace can each be read from their
 storage query endpoint. It writes a local JSON report named
 `verification-report-<run-id>.json`; reports are ignored by Git. Containers and volumes
 are retained after a successful run so that the stored data can be inspected.

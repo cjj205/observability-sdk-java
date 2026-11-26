@@ -115,6 +115,13 @@ public final class Observability {
     }
     /** Records a configured counter or histogram value. Invalid values and dimensions are discarded. */
     public void metric(String id, Number value, Map<String, ?> attributes) {
+        metric(id, value, attributes, Context.current());
+    }
+    /** Records a metric sample with an explicit span for metric-to-trace Exemplars. */
+    public void metric(String id, Number value, Map<String, ?> attributes, ObservationSpan span) {
+        metric(id, value, attributes, span == null ? Context.current() : span.context());
+    }
+    private void metric(String id, Number value, Map<String, ?> attributes, Context context) {
         if (!enabled.get()) return;
         try {
             if (id == null || value == null) throw new IllegalArgumentException();
@@ -140,8 +147,8 @@ public final class Observability {
                 }
             }
             String instrumentName = definition.name();
-            if (definition.histogram()) histograms.get(instrumentName).record(number, attrs);
-            else counters.get(instrumentName).add(value.longValue(), attrs);
+            if (definition.histogram()) histograms.get(instrumentName).record(number, attrs, context);
+            else counters.get(instrumentName).add(value.longValue(), attrs, context);
         } catch (RuntimeException e) { DIAGNOSTICS.warning("Observation metric rejected"); }
     }
     /** Emits a log record using the current context. */

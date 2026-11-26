@@ -55,8 +55,8 @@ class ObservabilityTest {
         Map<String, String> attrs = Map.of("extension.name", "TASK-T", "task.type", "diagnosis", "task.object", "demo");
         ObservationSpan span = observe.trace("SendMessage", SignalKind.CLIENT, attrs);
         observe.log("gen_ai.agent.a2at.message", LogSeverity.INFO, "token=abc https://u:p@example.com/path?token=x", attrs, span);
-        observe.metric("task.duration", 42000, Map.of("task.type", "diagnosis", "task.object", "demo"));
-        observe.metric("task.count", 1, Map.of("task.type", "diagnosis"));
+        observe.metric("task.duration", 42000, Map.of("task.type", "diagnosis", "task.object", "demo"), span);
+        observe.metric("task.count", 1, Map.of("task.type", "diagnosis"), span);
         span.ok(); span.end(); span.end();
         var data = spans.getFinishedSpanItems().get(0);
         assertEquals(1, spans.getFinishedSpanItems().size());
@@ -72,7 +72,11 @@ class ObservabilityTest {
         assertEquals("ms", duration.getUnit());
         var point = duration.getHistogramData().getPoints().iterator().next();
         assertEquals(1, point.getCount()); assertEquals(42000, point.getSum());
-        assertEquals(1, metric("task.count").getLongSumData().getPoints().iterator().next().getValue());
+        var exemplar = point.getExemplars().get(0);
+        assertEquals(data.getTraceId(), exemplar.getSpanContext().getTraceId());
+        assertEquals(data.getSpanId(), exemplar.getSpanContext().getSpanId());
+        var countPoint = metric("task.count").getLongSumData().getPoints().iterator().next();
+        assertEquals(1, countPoint.getValue());
     }
     @Test void bundledSignalConfigurationHasVersionsAndMetricAttributeRules() {
         assertEquals("1.0.0", Definitions.CONFIGURATION_VERSIONS.get("a2at"));

@@ -39,6 +39,7 @@ import io.opentelemetry.sdk.logs.SdkLoggerProvider;
 import io.opentelemetry.sdk.logs.export.BatchLogRecordProcessor;
 import io.opentelemetry.sdk.logs.export.LogRecordExporter;
 import io.opentelemetry.sdk.logs.data.LogRecordData;
+import io.opentelemetry.sdk.metrics.ExemplarFilter;
 import io.opentelemetry.sdk.metrics.SdkMeterProvider;
 import io.opentelemetry.sdk.metrics.Aggregation;
 import io.opentelemetry.sdk.metrics.InstrumentType;
@@ -166,6 +167,7 @@ public final class ObservabilitySdk implements AutoCloseable {
             .build();
         SdkMeterProvider meter = SdkMeterProvider.builder()
             .setResource(resource)
+            .setExemplarFilter(ExemplarFilter.traceBased())
             .registerMetricReader(PeriodicMetricReader.builder(trackingMetrics).setInterval(config.metricInterval).build())
             .build();
         SdkLoggerProvider logger = SdkLoggerProvider.builder()
