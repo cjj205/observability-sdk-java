@@ -16,7 +16,7 @@
     <revision>0.1.0-SNAPSHOT</revision>
     <maven.compiler.release>17</maven.compiler.release>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <otel.version>1.56.0</otel.version>
+    <otel.version>1.68.0</otel.version>
     <junit.version>5.11.4</junit.version>
     <maven.compiler.plugin.version>3.16.0</maven.compiler.plugin.version>
     <maven.surefire.plugin.version>3.6.1</maven.surefire.plugin.version>
