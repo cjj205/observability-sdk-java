@@ -42,8 +42,8 @@ public final class ConsumerSmoke {
             var observe = sdk.observe();
             try (var span = observe.trace("SendMessage", SignalKind.CLIENT, attributes)) {
                 observe.log("gen_ai.agent.a2at.message", LogSeverity.INFO, "Consumer smoke " + runId, attributes, span);
-                observe.metric("task.duration", 42, Map.of("task.type", "consumer-smoke"));
-                observe.metric("task.count", 1, Map.of("task.type", "consumer-smoke"));
+                observe.metric("task.duration", 42, Map.of("task.type", "consumer-smoke"), span);
+                observe.metric("task.count", 1, Map.of("task.type", "consumer-smoke"), span);
                 span.ok();
             }
             if (!sdk.flush(10, TimeUnit.SECONDS)) {

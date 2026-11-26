@@ -21,6 +21,7 @@ services:
       - --storage.tsdb.max-block-duration=2h
       - --web.enable-lifecycle
       - --web.enable-otlp-receiver
+      - --enable-feature=exemplar-storage
     volumes:
       - ./prometheus.yaml:/etc/prometheus/prometheus.yaml:ro
       - prometheus-data:/prometheus

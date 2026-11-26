@@ -170,14 +170,20 @@ try (var span = observe.trace("a2at.workflow", SignalKind.INTERNAL, attributes))
 
 ```java
 void metric(String id, Number value, Map<String, ?> attributes)
+void metric(String id, Number value, Map<String, ?> attributes, ObservationSpan span)
 ```
 
 记录一个指标样本。数值必须是有限且非负；计数器仅接受 Java 整数类型。`id` 使用 YAML 的短名称或指标 OpenTelemetry 全名。
+
+默认方法使用当前上下文。需要在异步回调、Span 已不再是当前上下文等场景关联 Metric 与 Trace 时，传入产生该指标的 `ObservationSpan`。SDK 将该 Span 上下文传给 OTel Metrics；当 Span 被采样且后端开启 Exemplar 存储时，Histogram Metric 样本可携带 Trace ID、Span ID。当前 Java OTel 的 Counter 聚合不导出 Exemplar。
 
 ```java
 observe.metric("workflow.duration", 180, Map.of(
     "workflow.type", "fault-diagnosis",
     "workflow.status", "completed"));
+
+// Metric 与 span 关联，供 Exemplar 查询跳转到 Trace
+observe.metric("task.duration", 42_000, Map.of("task.type", "diagnosis"), span);
 ```
 
 ### `log`

@@ -8,4 +8,8 @@ otlp:
   promote_resource_attributes:
     - service.name
 
+storage:
+  exemplars:
+    max_exemplars: 100000
+
 scrape_configs: []

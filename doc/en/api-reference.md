@@ -166,14 +166,20 @@ try (var span = observe.trace("a2at.workflow", SignalKind.INTERNAL, attributes))
 
 ```java
 void metric(String id, Number value, Map<String, ?> attributes)
+void metric(String id, Number value, Map<String, ?> attributes, ObservationSpan span)
 ```
 
 Records a metric sample. Values must be finite and non-negative; counters accept Java integer types only. `id` may be the YAML short name or the metric OpenTelemetry name.
+
+The default overload uses the current context. For asynchronous callbacks or other cases where the source span is no longer current, provide the `ObservationSpan` that produced the measurement. The SDK supplies its context to OTel Metrics; when the span is sampled and the backend stores Exemplars, Histogram metric samples can carry its Trace ID and Span ID. Counter aggregation in the current Java OTel SDK does not export Exemplars.
 
 ```java
 observe.metric("workflow.duration", 180, Map.of(
     "workflow.type", "fault-diagnosis",
     "workflow.status", "completed"));
+
+// Associates this metric with span for Exemplar-based trace navigation.
+observe.metric("task.duration", 42_000, Map.of("task.type", "diagnosis"), span);
 ```
 
 ### `log`
