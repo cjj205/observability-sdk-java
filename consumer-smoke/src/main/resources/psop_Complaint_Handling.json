@@ -1,7 +1,7 @@
 {
   "id": "1d4c367d-9f0c-4400-85d2-caaf21ee37af",
   "name": "IG1504D_AN_L4_Enterprise_Private_Line_Complaint_Handling_Solution_Package",
-  "description": null,
+  "description": "跨地市集客专线SLA劣化投诉处理流程：WAIMO负责投诉受理与闭环，Transport基于OMC根因与修复建议编排授权、方案上报、执行与验证",
   "created_at": "2026-11-25T11:21:39.277607",
   "steps": [
     {
@@ -10,7 +10,7 @@
       "subtasks": [
         {
           "task_id": "0f8672ae-27af-4dd3-accd-f8039a0ac3e7",
-          "description": "投诉受理：从流程中心抓取跨地市专线SLA劣化投诉工单，完成投诉受理",
+          "description": "WAIMO编排层-投诉受理：从流程中心抓取跨地市专线SLA劣化投诉工单，完成投诉受理",
           "agent": "WAIMO Complaint Agent",
           "skill": "Complaint Ticket Intake",
           "status": "pending"
@@ -29,7 +29,7 @@
       "subtasks": [
         {
           "task_id": "d47a64dc-e133-4cca-984a-d2389b3170a4",
-          "description": "投诉识别：识别投诉现象与投诉意图，判定为传输专线质差投诉场景",
+          "description": "WAIMO编排层-投诉识别：识别投诉现象与投诉意图，判定为传输专线质差投诉场景",
           "agent": "WAIMO Complaint Agent",
           "skill": "Complaint Intent Recognition",
           "status": "pending"
@@ -48,16 +48,9 @@
       "subtasks": [
         {
           "task_id": "08e933b3-5d8d-40d3-8b01-92ac164277e9",
-          "description": "定界定位：核查专线业务状态与网络情况（业务状态、路由、告警），输出定界结论：传输大网线路问题",
+          "description": "WAIMO编排层-定界定位：核查专线业务状态与网络情况（业务状态、路由、告警），输出定界结论：传输大网线路问题",
           "agent": "WAIMO Complaint Agent",
           "skill": "Complaint Localization",
-          "status": "pending"
-        },
-        {
-          "task_id": "fabda4aa-b739-4fd6-89c6-006ec521e696",
-          "description": "按技能「专线投诉诊断」检索注册中心，获取传输投诉处理智能体（传输工作台，技能：任务规划/并行调度/综合研判）",
-          "agent": "WAIMO Complaint Agent",
-          "skill": "Agent Card Search",
           "status": "pending"
         }
       ],
@@ -73,31 +66,10 @@
       "type": "AllSuccess",
       "subtasks": [
         {
-          "task_id": "f02c5940-35d8-482c-8efe-d8e2c0c1e776",
-          "description": "根因定位（动态编排）：数据关联——按专线业务源宿端接入网元明确所属SPN网络智能；按技能「专线故障定位·抢通」检索注册中心，获取粤东/粤西SPN网络智能；动态编排并创建、下发投诉诊断任务",
-          "agent": "Transport Complaint Agent",
-          "skill": "Leased-Line Complaint Diagnosis",
-          "status": "pending"
-        },
-        {
-          "task_id": "e9adbc05-ee80-4a5e-b67f-7675819124f5",
-          "description": "根因定位（A端）：对A端所属SPN网络执行根因定位，返回诊断结果与修复建议",
-          "agent": "West-GD NETSpirit",
-          "skill": "Leased-Line Fault Locating and Restoration",
-          "status": "pending"
-        },
-        {
-          "task_id": "2543d13a-ccbb-46da-ba0e-669d8bf0d1a7",
-          "description": "根因定位（Z端）：对Z端所属SPN网络执行根因定位，返回诊断结果",
-          "agent": "East-GD NETSpirit",
-          "skill": "Leased-Line Fault Locating and Restoration",
-          "status": "pending"
-        },
-        {
-          "task_id": "224c5455-433d-4217-8420-4b5433816953",
-          "description": "根因总结：汇总跨地市协同诊断结论（故障根因、根因位置、修复建议），回传WAIMO；WAIMO将工单根因回传流程中心",
-          "agent": "Transport Complaint Agent",
-          "skill": "Root Cause Summarization",
+          "task_id": "fabda4aa-b739-4fd6-89c6-006ec521e696",
+          "description": "WAIMO编排层-技能检索：定界结论确认后，按技能「专线投诉诊断」检索注册中心，确定Transport Complaint Agent承接诊断任务",
+          "agent": "WAIMO Complaint Agent",
+          "skill": "Agent Card Search",
           "status": "pending"
         }
       ],
@@ -113,38 +85,17 @@
       "type": "AllSuccess",
       "subtasks": [
         {
-          "task_id": "864bd61c-7dba-46e4-ab8d-c729f1b3366b",
-          "description": "调度处置：确认支持自动抢通，授权网络智能执行业务自动抢通并跟踪处置进展",
-          "agent": "WAIMO Complaint Agent",
-          "skill": "Complaint Handling Dispatch",
-          "status": "pending"
-        },
-        {
-          "task_id": "067c7656-747a-4015-94c4-1bb825f07e68",
-          "description": "动网操作授权：若抢通方案涉及动网操作（如隧道调优），传输工作台发起动网操作授权请求，粤西新增动网操作授权策略（业务场景/处置类型/动网操作名称）并返回授权结果",
-          "agent": "West-GD NETSpirit",
-          "skill": "Network Operation Authorization",
-          "status": "pending"
-        },
-        {
-          "task_id": "705809ca-a2ee-4087-9432-19844ede47b5",
-          "description": "抢通执行：执行抢通方案（如隧道调优），将带宽、时延、丢包越限的业务隧道调优到新的路径，完成后向传输工作台上报抢通方案与执行结果",
-          "agent": "West-GD NETSpirit",
-          "skill": "Leased-Line Fault Locating and Restoration",
-          "status": "pending"
-        },
-        {
-          "task_id": "d5c0dd85-673e-4812-a86d-195886a421d0",
-          "description": "抢通上报：将抢通方案与执行结果逐级上报WAIMO（方案上报与结果上报：抢通执行SPN→传输工作台→WAIMO）",
+          "task_id": "f02c5940-35d8-482c-8efe-d8e2c0c1e776",
+          "description": "Transport编排层-诊断任务编排：承接WAIMO投诉诊断任务，按专线业务源宿端接入网元明确待检索的SPN网络范围",
           "agent": "Transport Complaint Agent",
-          "skill": "Restoration Notification",
+          "skill": "Diagnosis Task Planning",
           "status": "pending"
         }
       ],
       "next": [
         {
           "step": "step6",
-          "condition": "业务自动抢通执行成功"
+          "condition": ""
         }
       ]
     },
@@ -153,24 +104,17 @@
       "type": "AllSuccess",
       "subtasks": [
         {
-          "task_id": "f9241b19-a228-49b2-b5c8-e4a77cac7f5c",
-          "description": "修复验证：周期查询专线业务的SLA信息，确认指标恢复正常",
+          "task_id": "a5019a01-0001-4001-9001-000000000018",
+          "description": "Transport编排层-OMC诊断智能体检索：按技能「专线故障定位·抢通」检索注册中心，结合源宿端接入网元获取A端/Z端候选OMC诊断智能体",
           "agent": "Transport Complaint Agent",
-          "skill": "Service SLA Verification",
-          "status": "pending"
-        },
-        {
-          "task_id": "11473e4b-11ef-4206-a6f7-d27c0e518404",
-          "description": "结果回复：向WAIMO回复修复验证结果（业务已完成抢通修复、SLA恢复正常）",
-          "agent": "Transport Complaint Agent",
-          "skill": "Restoration Result Reply",
+          "skill": "Agent Card Search",
           "status": "pending"
         }
       ],
       "next": [
         {
           "step": "step7",
-          "condition": "SLA指标恢复正常"
+          "condition": ""
         }
       ]
     },
@@ -179,8 +123,209 @@
       "type": "AllSuccess",
       "subtasks": [
         {
+          "task_id": "e9adbc05-ee80-4a5e-b67f-7675819124f5",
+          "description": "OMC执行层-A端根因定位：对A端所属SPN网络执行根因定位，返回根因、根因位置与修复建议",
+          "agent": "West-GD NETSpirit",
+          "skill": "Leased-Line Fault Locating and Restoration",
+          "status": "pending"
+        },
+        {
+          "task_id": "2543d13a-ccbb-46da-ba0e-669d8bf0d1a7",
+          "description": "OMC执行层-Z端根因定位：对Z端所属SPN网络执行根因定位，返回根因、根因位置与修复建议",
+          "agent": "East-GD NETSpirit",
+          "skill": "Leased-Line Fault Locating and Restoration",
+          "status": "pending"
+        },
+        {
+          "task_id": "224c5455-433d-4217-8420-4b5433816953",
+          "description": "Transport编排层-根因汇总与结果上报：汇总OMC诊断结果，提取根因、根因位置与修复建议并上报根因结果；此时尚未确定执行抢通的OMC智能体",
+          "agent": "Transport Complaint Agent",
+          "skill": "Root Cause Summarization",
+          "status": "pending"
+        }
+      ],
+      "next": [
+        {
+          "step": "step9",
+          "condition": ""
+        }
+      ]
+    },
+    {
+      "name": "step9",
+      "type": "AllSuccess",
+      "subtasks": [
+        {
+          "task_id": "a5019a01-0001-4001-9001-000000000011",
+          "description": "OMC执行层-授权校验：校验当前修复动作是否已具备执行授权（业务场景、处置类型、动网操作名称），输出授权结论",
+          "agent": "Selected OMC Agent",
+          "skill": "Network Operation Authorization",
+          "status": "pending"
+        }
+      ],
+      "next": [
+        {
+          "step": "step10",
+          "condition": "授权校验不通过且需要动网授权"
+        },
+        {
+          "step": "step11",
+          "condition": "授权校验通过"
+        }
+      ]
+    },
+    {
+      "name": "step10",
+      "type": "AllSuccess",
+      "subtasks": [
+        {
+          "task_id": "067c7656-747a-4015-94c4-1bb825f07e68",
+          "description": "OMC执行层-授权请求：发起动网操作授权请求（业务场景、处置类型、动网操作名称、影响说明），接收新增授权策略并返回授权结果",
+          "agent": "Selected OMC Agent",
+          "skill": "Network Operation Authorization Request",
+          "status": "pending"
+        }
+      ],
+      "next": [
+        {
+          "step": "step11",
+          "condition": "授权成功"
+        },
+        {
+          "step": "step16",
+          "condition": "授权失败或授权被拒绝"
+        }
+      ]
+    },
+    {
+      "name": "step11",
+      "type": "AllSuccess",
+      "subtasks": [
+        {
+          "task_id": "a5019a01-0001-4001-9001-000000000010",
+          "description": "Transport编排层-修复方案上报：向WAIMO上报已获授权的修复方案、根因结论、授权结论与影响说明",
+          "agent": "Transport Complaint Agent",
+          "skill": "Restoration Plan Notification",
+          "status": "pending"
+        }
+      ],
+      "next": [
+        {
+          "step": "step12",
+          "condition": ""
+        }
+      ]
+    },
+    {
+      "name": "step12",
+      "type": "AllSuccess",
+      "subtasks": [
+        {
+          "task_id": "705809ca-a2ee-4087-9432-19844ede47b5",
+          "description": "OMC执行层-抢通执行：执行已获授权的修复方案（如隧道调优），将带宽、时延、丢包越限的业务隧道调优到新的路径，完成后向Transport Complaint Agent上报执行结果",
+          "agent": "Selected OMC Agent",
+          "skill": "Leased-Line Fault Locating and Restoration",
+          "status": "pending"
+        }
+      ],
+      "next": [
+        {
+          "step": "step13",
+          "condition": "修复动作执行成功"
+        },
+        {
+          "step": "step16",
+          "condition": "修复动作执行失败"
+        }
+      ]
+    },
+    {
+      "name": "step13",
+      "type": "AllSuccess",
+      "subtasks": [
+        {
+          "task_id": "d5c0dd85-673e-4812-a86d-195886a421d0",
+          "description": "Transport编排层-修复结果上报：汇总修复方案、授权结论和执行结果，回传WAIMO；WAIMO将处置进展回传流程中心",
+          "agent": "Transport Complaint Agent",
+          "skill": "Restoration Notification",
+          "status": "pending"
+        }
+      ],
+      "next": [
+        {
+          "step": "step14",
+          "condition": ""
+        }
+      ]
+    },
+    {
+      "name": "step14",
+      "type": "AllSuccess",
+      "subtasks": [
+        {
+          "task_id": "f9241b19-a228-49b2-b5c8-e4a77cac7f5c",
+          "description": "Transport编排层-修复验证：周期查询专线业务SLA信息，确认指标恢复正常",
+          "agent": "Transport Complaint Agent",
+          "skill": "Service SLA Verification",
+          "status": "pending"
+        }
+      ],
+      "next": [
+        {
+          "step": "step15",
+          "condition": "SLA指标恢复正常"
+        },
+        {
+          "step": "step16",
+          "condition": "SLA指标未恢复且仍支持重新处置"
+        }
+      ]
+    },
+    {
+      "name": "step15",
+      "type": "AllSuccess",
+      "subtasks": [
+        {
+          "task_id": "11473e4b-11ef-4206-a6f7-d27c0e518404",
+          "description": "Transport编排层-验证结果回复：向WAIMO回复修复验证结果（业务已完成修复、SLA恢复正常），由WAIMO完成投诉闭环",
+          "agent": "Transport Complaint Agent",
+          "skill": "Restoration Result Reply",
+          "status": "pending"
+        }
+      ],
+      "next": [
+        {
+          "step": "step17",
+          "condition": ""
+        }
+      ]
+    },
+    {
+      "name": "step16",
+      "type": "AllSuccess",
+      "subtasks": [
+        {
+          "task_id": "a5019a01-0001-4001-9001-000000000015",
+          "description": "WAIMO编排层-人工修复：基于授权失败、执行失败或SLA未恢复原因，创建人工修复任务并跟踪完成情况",
+          "agent": "WAIMO Complaint Agent",
+          "skill": "Manual Repair Dispatch",
+          "status": "pending"
+        }
+      ],
+      "next": [
+        {
+          "step": "step14",
+          "condition": "人工修复完成"
+        }
+      ]
+    },
+    {
+      "name": "step17",
+      "type": "AllSuccess",
+      "subtasks": [
+        {
           "task_id": "b39d22d9-f5f0-4852-a080-48eb711394d4",
-          "description": "投诉报结：客户回访确认问题已解决，投诉工单闭环，处理信息回传流程中心",
+          "description": "WAIMO编排层-投诉报结：基于Transport验证结果确认问题已解决，客户回访，投诉工单闭环，处理信息回传流程中心",
           "agent": "WAIMO Complaint Agent",
           "skill": "Complaint Closure",
           "status": "pending"
