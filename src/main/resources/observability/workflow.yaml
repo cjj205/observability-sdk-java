@@ -8,7 +8,7 @@ attributes:
   workflow.type: {otel_name: gen_ai.agent.a2at.workflow.type, type: string, source: openan, value_range: '低基数类型枚举（如 fault-diagnosis）', description: '工作流类型，低基数类型枚举（如 fault-diagnosis）'}
   workflow.status: {otel_name: gen_ai.agent.a2at.workflow.status, type: string, source: openan, value_range: '运行态（running/completed/failed/cancelled 等）', description: '工作流执行状态，运行态（running/completed/failed 等）'}
   workflow.session_id: {otel_name: gen_ai.agent.a2at.workflow.session_id, type: string, source: openan, value_range: '自由字符串', description: '工作流所属会话标识'}
-  workflow.step: {otel_name: gen_ai.agent.a2at.workflow.step, type: string, source: openan, value_range: '自由字符串，步骤名（高基数）', description: '工作流步骤名称'}
+  workflow.step.name: {otel_name: gen_ai.agent.a2at.workflow.step.name, type: string, source: openan, value_range: '自由字符串，步骤名（高基数）', description: '工作流步骤名称'}
   workflow.step.id: {otel_name: gen_ai.agent.a2at.workflow.step.id, type: string, source: openan, value_range: '自由字符串，步骤标识', description: '步骤标识'}
   workflow.step.status: {otel_name: gen_ai.agent.a2at.workflow.step.status, type: string, source: openan, value_range: 'Metric 维度约定 success/failed；Trace/Log 运行态（active/running/completed）', description: '步骤执行状态；Metric 维度约定取终态 success/failed，Trace/Log 为运行态（active/running/completed）'}
   workflow.step.owner_agent: {otel_name: gen_ai.agent.a2at.workflow.step.owner_agent, type: string, source: openan, value_range: 'Agent 名称', description: '负责执行该步骤的 Agent 名称'}
@@ -70,8 +70,8 @@ traces:
     source: openan
     description: '工作流步骤 Span，名称为前缀 a2at.step. 加步骤名'
     attributes:
-      allowed: [workflow.step, workflow.step.id, workflow.step.status, workflow.step.owner_agent]
-      required: [workflow.step, workflow.step.id, workflow.step.status]
+      allowed: [workflow.step.name, workflow.step.id, workflow.step.status, workflow.step.owner_agent]
+      required: [workflow.step.name, workflow.step.id, workflow.step.status]
 
 logs:
   workflow:
@@ -86,7 +86,7 @@ logs:
     source: openan
     description: '工作流步骤事件日志'
     attributes:
-      allowed: [workflow.step, workflow.step.id, workflow.step.status, workflow.step.owner_agent]
-      required: [workflow.step, workflow.step.id, workflow.step.status]
+      allowed: [workflow.step.name, workflow.step.id, workflow.step.status, workflow.step.owner_agent]
+      required: [workflow.step.name, workflow.step.id, workflow.step.status]
 
 extensions: {}

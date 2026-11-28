@@ -60,7 +60,7 @@ public final class ConsumerComplaintHandling {
 
     private static void emitStep(Observability observe, ObservationSpan root, String runId, int index) {
         String owner = OWNERS[index - 1];
-        Map<String, Object> step = Map.of("workflow.step", STEPS[index - 1], "workflow.step.index", index,
+        Map<String, Object> step = Map.of("workflow.step.name", STEPS[index - 1], "workflow.step.id", "step-" + index,
             "workflow.step.status", "completed", "workflow.step.owner_agent", owner);
         try (var stepSpan = observe.trace("a2at.step.collect", SignalKind.INTERNAL, step, root)) {
             try (var substep = observe.trace("a2at.substep.analyze", SignalKind.INTERNAL,

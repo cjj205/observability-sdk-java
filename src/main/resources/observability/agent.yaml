@@ -12,7 +12,7 @@ attributes:
   gen_ai.request.model: {otel_name: gen_ai.request.model, type: string, source: gen_ai, value_range: '模型名（低基数）', description: '请求模型名称，OTel GenAI 标准属性'}
   gen_ai.response.model: {otel_name: gen_ai.response.model, type: string, source: gen_ai, value_range: '模型名', description: '响应模型名称，OTel GenAI 标准属性'}
   gen_ai.token.modality: {otel_name: gen_ai.token.modality, type: string, signals: M, source: gen_ai, value_range: '约定 text/image/audio/unknown', description: 'Token 模态，OTel GenAI 标准属性；约定取值 text/image/audio/unknown'}
-  workflow.step: {otel_name: gen_ai.agent.a2at.workflow.step, type: string, source: openan, value_range: '自由字符串，步骤名', description: '工作流步骤名称，与 workflow.yaml 共享定义'}
+  workflow.step.name: {otel_name: gen_ai.agent.a2at.workflow.step.name, type: string, source: openan, value_range: '自由字符串，步骤名', description: '工作流步骤名称，与 workflow.yaml 共享定义'}
   workflow.step.id: {otel_name: gen_ai.agent.a2at.workflow.step.id, type: string, source: openan, value_range: '自由字符串，步骤标识', description: '步骤标识，与 workflow.yaml 共享定义'}
 metrics:
   substep.duration:
@@ -78,7 +78,7 @@ logs:
     source: openan
     description: 'Agent 子步骤事件日志'
     attributes:
-      allowed: [gen_ai.agent.name, substep.name, substep.status, workflow.step, workflow.step.id]
+      allowed: [gen_ai.agent.name, substep.name, substep.status, workflow.step.name, workflow.step.id]
       required: [gen_ai.agent.name, substep.name, substep.status]
 
 extensions: {}

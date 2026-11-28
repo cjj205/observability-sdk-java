@@ -60,8 +60,8 @@ public final class WorkflowAgentExample {
 
     private static void runStep(net.openan.observability.Observability observe, String runId) {
         Map<String, Object> step = Map.of(
-            "workflow.step", "retrieve-alarms",
-            "workflow.step.index", 1,
+            "workflow.step.name", "retrieve-alarms",
+            "workflow.step.id", "step-1",
             "workflow.step.status", "completed",
             "workflow.step.owner_agent", "diagnosis-agent");
         try (var stepSpan = observe.trace("a2at.step.retrieve-alarms", SignalKind.INTERNAL, step);
@@ -97,8 +97,8 @@ public final class WorkflowAgentExample {
                 "gen_ai.agent.name", "diagnosis-agent",
                 "substep.name", "retrieve-alarms",
                 "substep.status", "completed",
-                "workflow.step", "retrieve-alarms",
-                "workflow.step.index", 1), agentSpan);
+                "workflow.step.name", "retrieve-alarms",
+                "workflow.step.id", "step-1"), agentSpan);
             agentSpan.ok();
         }
     }

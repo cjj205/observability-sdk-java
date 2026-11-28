@@ -154,7 +154,7 @@ try (var scope = TraceContextPropagation.extractToCurrent(requestHeaders, header
 
 ### Workflow
 
-- `a2at.workflow` requires `workflow.id`, `workflow.type`, and `workflow.status`; `a2at.step.<name>` requires the step name, index, and status.
+- `a2at.workflow` requires `workflow.id`, `workflow.type`, and `workflow.status`; `a2at.step.<name>` requires the step name, ID, and status.
 - `workflow.duration` and `workflow.count` require `workflow.type` and `workflow.status`; `step.duration` and `step.count` require the step outcome `workflow.step.status` (convention `success` / `failed`) and `gen_ai.agent.name`.
 - The log names are `gen_ai.agent.a2at.workflow` and `gen_ai.agent.a2at.step`.
 

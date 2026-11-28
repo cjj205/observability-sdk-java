@@ -154,7 +154,7 @@ try (var scope = TraceContextPropagation.extractToCurrent(requestHeaders, header
 
 ### Workflow
 
-- `a2at.workflow` 要求 `workflow.id`、`workflow.type`、`workflow.status`；`a2at.step.<name>` 要求步骤名称、序号和状态。
+- `a2at.workflow` 要求 `workflow.id`、`workflow.type`、`workflow.status`；`a2at.step.<name>` 要求步骤名称、步骤 ID 和状态。
 - `workflow.duration`、`workflow.count` 要求 `workflow.type` 与 `workflow.status`；`step.duration`、`step.count` 要求步骤终态 `workflow.step.status`（约定 `success` / `failed`）与 `gen_ai.agent.name`。
 - Log 名称为 `gen_ai.agent.a2at.workflow` 和 `gen_ai.agent.a2at.step`。
 

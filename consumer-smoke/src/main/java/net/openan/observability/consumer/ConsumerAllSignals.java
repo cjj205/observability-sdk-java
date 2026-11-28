@@ -98,7 +98,7 @@ public final class ConsumerAllSignals {
             "workflow.id", "workflow-" + scenario + "-" + runId, "workflow.type", workflowType,
             "workflow.status", workflowStatus, "workflow.session_id", "session-" + scenario + "-" + runId);
         Map<String, Object> step = Map.of(
-            "workflow.step", stepName, "workflow.step.index", 1, "workflow.step.status", workflowStatus,
+            "workflow.step.name", stepName, "workflow.step.id", "step-1", "workflow.step.status", workflowStatus,
             "workflow.step.owner_agent", "consumer-agent");
         try (var workflowSpan = observe.trace("a2at.workflow", SignalKind.INTERNAL, workflow)) {
             try (var workflowScope = workflowSpan.makeCurrent()) {
@@ -109,7 +109,7 @@ public final class ConsumerAllSignals {
                 try (var stepSpan = observe.trace("a2at.step.collect", SignalKind.INTERNAL, step, workflowSpan)) {
                     try (var stepScope = stepSpan.makeCurrent()) {
                         observe.log("gen_ai.agent.a2at.step", LogSeverity.INFO, "Workflow step started", Map.of(
-                            "workflow.step", stepName, "workflow.step.index", 1, "workflow.step.status", "running",
+                            "workflow.step.name", stepName, "workflow.step.id", "step-1", "workflow.step.status", "running",
                             "workflow.step.owner_agent", "consumer-agent"), stepSpan);
                         emitAgentSignals(observe, runId, stepName, substepDuration, stepSpan, agentWork);
                         observe.metric("step.duration", stepDuration, Map.of(
@@ -201,7 +201,7 @@ public final class ConsumerAllSignals {
                     "agent.skills", List.of("analyze", "report"), "agent.state", "running"), span);
                 observe.log("gen_ai.agent.a2at.substep", LogSeverity.INFO, "Agent substep started", Map.of(
                     "gen_ai.agent.name", "consumer-agent", "substep.name", "analyze", "substep.status", "running",
-                    "workflow.step", stepName, "workflow.step.index", 1), span);
+                    "workflow.step.name", stepName, "workflow.step.id", "step-1"), span);
                 agentWork.accept(span);
                 observe.metric("substep.duration", substepDuration, Map.of(
                     "substep.status", "success", "gen_ai.agent.name", "consumer-agent"));
@@ -213,7 +213,7 @@ public final class ConsumerAllSignals {
                     "gen_ai.agent.name", "consumer-agent", "gen_ai.request.model", "model-1"));
                 observe.log("gen_ai.agent.a2at.substep", LogSeverity.INFO, "Agent substep completed", Map.of(
                     "gen_ai.agent.name", "consumer-agent", "substep.name", "analyze", "substep.status", "completed",
-                    "workflow.step", stepName, "workflow.step.index", 1), span);
+                    "workflow.step.name", stepName, "workflow.step.id", "step-1"), span);
                 observe.log("gen_ai.agent.a2at.agent", LogSeverity.INFO, "Agent completed", Map.of(
                     "gen_ai.agent.name", "consumer-agent", "agent.role", "observer",
                     "agent.skills", List.of("analyze", "report"), "agent.state", "completed"), span);

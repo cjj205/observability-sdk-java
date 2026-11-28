@@ -52,7 +52,7 @@ class AgentCoverageTest {
             observe.log("gen_ai.agent.a2at.agent", LogSeverity.INFO, "agent started", Map.of(
                 "gen_ai.agent.name", "diagnosis-agent", "agent.role", "diagnosis", "agent.skills", List.of("retrieve", "reason"), "agent.state", "running"), span);
             observe.log("gen_ai.agent.a2at.substep", LogSeverity.INFO, "substep started", Map.of(
-                "gen_ai.agent.name", "diagnosis-agent", "substep.name", "retrieve-alarms", "substep.status", "active", "workflow.step", "diagnosis", "workflow.step.id", "step-1"), span);
+                "gen_ai.agent.name", "diagnosis-agent", "substep.name", "retrieve-alarms", "substep.status", "active", "workflow.step.name", "diagnosis", "workflow.step.id", "step-1"), span);
             observe.metric("substep.duration", 8, Map.of("substep.status", "success", "gen_ai.agent.name", "diagnosis-agent"));
             observe.metric("substep.count", 1, Map.of("substep.status", "success", "gen_ai.agent.name", "diagnosis-agent"));
             observe.metric("gen_ai.client.inference.usage.input_tokens", 120, Map.of("gen_ai.operation.name", "chat", "gen_ai.provider.name", "openai",

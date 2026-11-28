@@ -69,7 +69,7 @@ try (var span = observe.trace("SendMessage", SignalKind.CLIENT, task)) {
 
 ### 3.2 Workflow
 
-The workflow trace name is `a2at.workflow` and requires `workflow.id`, `workflow.type`, and `workflow.status`. A step trace uses `a2at.step.<step-name>` and requires the step name, index, and status.
+The workflow trace name is `a2at.workflow` and requires `workflow.id`, `workflow.type`, and `workflow.status`. A step trace uses `a2at.step.<step-name>` and requires the step name, ID, and status.
 
 ```java
 var workflow = Map.of(
@@ -79,8 +79,8 @@ var workflow = Map.of(
 try (var workflowSpan = observe.trace("a2at.workflow", SignalKind.INTERNAL, workflow);
      var workflowScope = workflowSpan.makeCurrent()) {
     var step = Map.of(
-        "workflow.step", "retrieve-alarms",
-        "workflow.step.index", 1,
+        "workflow.step.name", "retrieve-alarms",
+        "workflow.step.id", "step-1",
         "workflow.step.status", "completed");
     try (var stepSpan = observe.trace("a2at.step.retrieve-alarms", SignalKind.INTERNAL, step)) {
         observe.metric("step.duration", 75, Map.of(
