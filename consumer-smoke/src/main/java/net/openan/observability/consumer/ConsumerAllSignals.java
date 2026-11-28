@@ -137,8 +137,8 @@ public final class ConsumerAllSignals {
             try (var clientScope = client.makeCurrent()) {
                 observe.log(MESSAGE_LOG, LogSeverity.INFO, "Task request dispatched", Map.of(
                     "extension.name", "task-t", "task.type", "fault-diagnosis", "task.object", "alarm-cluster-17"), client);
-                observe.metric("task.duration", 950.0, Map.of("task.type", "fault-diagnosis", "task.object", "alarm-cluster-17"));
-                observe.metric("task.count", 1, Map.of("task.type", "fault-diagnosis", "task.object", "alarm-cluster-17"));
+                observe.metric("task.duration", 950.0, Map.of("task.type", "fault-diagnosis", "task.object", "alarm-cluster-17", "task.status", "completed"));
+                observe.metric("task.count", 1, Map.of("task.type", "fault-diagnosis", "task.object", "alarm-cluster-17", "task.status", "completed"));
                 observe.metric("gen_ai.client.operation.duration", 0.18, Map.of("operation.name", "SendMessage"));
                 try (var server = observe.trace("SendMessage", SignalKind.SERVER, task, client)) {
                     try (var serverScope = server.makeCurrent()) {
@@ -242,7 +242,7 @@ public final class ConsumerAllSignals {
             "push.notification.url", "https://example.com/notifications/diagnostic"), Map.of(
             "extension.name", "notification-t", "notification.topic", "diagnostic.completed",
             "push.notification.url", "https://example.com/notifications/diagnostic"), server ->
-                observe.metric("notification.count", 1, Map.of("notification.topic", "diagnostic.completed")));
+                observe.metric("notification.count", 1, Map.of("notification.topic", "diagnostic.completed", "notification.result", "sent")));
     }
 
     private static void emitAuthorizationFlow(Observability observe, String runId, ObservationSpan parent) {
@@ -250,10 +250,10 @@ public final class ConsumerAllSignals {
             "extension.name", "authorization-t", "authorization.stage", "execute",
             "authorization.policy.operation.type", "create"), Map.of(
             "extension.name", "authorization-t", "authorization.stage", "execute",
-            "authorization.policy.operation.type", "create"), server -> {
-                observe.metric("authorization.preauthorize.count", 1, Map.of("authorization.policy.operation.type", "create"));
-                observe.metric("authorization.preauthorize.duration", 45.0, Map.of("authorization.policy.operation.type", "create"));
-                observe.metric("authorization.execute.count", 1, Map.of("authorization.policy.operation.type", "create"));
+            "authorization.policy.operation.type", "create"),             server -> {
+                observe.metric("authorization.preauthorize.count", 1, Map.of("authorization.policy.operation.type", "create", "authorization.result", "allowed"));
+                observe.metric("authorization.preauthorize.duration", 45.0, Map.of("authorization.policy.operation.type", "create", "authorization.result", "allowed"));
+                observe.metric("authorization.execute.count", 1, Map.of("authorization.policy.operation.type", "create", "authorization.result", "allowed"));
             });
     }
 

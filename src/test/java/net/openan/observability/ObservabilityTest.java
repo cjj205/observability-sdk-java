@@ -56,7 +56,7 @@ class ObservabilityTest {
         ObservationSpan span = observe.trace("SendMessage", SignalKind.CLIENT, attrs);
         observe.log("gen_ai.agent.a2at.message", LogSeverity.INFO, "token=abc https://u:p@example.com/path?token=x", attrs, span);
         observe.metric("task.duration", 42000, Map.of("task.type", "diagnosis", "task.object", "demo"), span);
-        observe.metric("task.count", 1, Map.of("task.type", "diagnosis"), span);
+        observe.metric("task.count", 1, Map.of("task.type", "diagnosis", "task.status", "completed"), span);
         span.ok(); span.end(); span.end();
         var data = spans.getFinishedSpanItems().get(0);
         assertEquals(1, spans.getFinishedSpanItems().size());
@@ -77,6 +77,7 @@ class ObservabilityTest {
         assertEquals(data.getSpanId(), exemplar.getSpanContext().getSpanId());
         var countPoint = metric("task.count").getLongSumData().getPoints().iterator().next();
         assertEquals(1, countPoint.getValue());
+        assertEquals("completed", countPoint.getAttributes().get(AttributeKey.stringKey(Definitions.PREFIX + "task.status")));
     }
     @Test void bundledSignalConfigurationHasVersionsAndMetricAttributeRules() {
         assertEquals("1.0.0", Definitions.CONFIGURATION_VERSIONS.get("a2at"));
@@ -109,6 +110,9 @@ class ObservabilityTest {
         assertTrue(Definitions.attribute("workflow.status").values().isEmpty());
         assertEquals("gen_ai.agent.a2a.operation.name", Definitions.attribute("operation.name").name());
         assertEquals("SM", Definitions.attribute("operation.name").signals());
+        assertEquals("gen_ai.agent.a2at.task.status", Definitions.attribute("task.status").name());
+        assertEquals("gen_ai.agent.a2at.notification.result", Definitions.attribute("notification.result").name());
+        assertEquals("gen_ai.agent.a2at.authorization.result", Definitions.attribute("authorization.result").name());
     }
     @Test void allConfiguredMetricsUseSpecifiedTypesUnitsAndDimensions() {
         Definitions.METRICS.forEach((name, definition) -> {

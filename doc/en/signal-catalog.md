@@ -107,15 +107,21 @@ Note: all 16 A2A-T Traces are A2A protocol operation spans (aligned with the a2a
 | | | | | | `error.type` | string | Low-cardinality error code | Optional | Streaming duration per error type |
 | `task.duration` | `gen_ai.agent.a2at.task.duration` | openan | Histogram (ms) | Task-T task duration distribution | `task.type` | string | Low-cardinality task type (e.g. `diagnosis`) | Required | Duration per task type |
 | | | | | | `task.object` | string | Free string | Optional | Split task duration by task object |
+| | | | | | `task.status` | string | Conventional `completed` / `failed` / `cancelled` | Optional | Task duration per terminal state; supports the task success rate |
 | `task.count` | `gen_ai.agent.a2at.task.count` | openan | Counter | Task-T cumulative task execution count | `task.type` | string | Low-cardinality task type | Required | Execution count per task type |
 | | | | | | `task.object` | string | Free string | Optional | Split task count by task object |
+| | | | | | `task.status` | string | Conventional `completed` / `failed` / `cancelled` | Optional | Task count per terminal state; supports the task success rate |
 | `negotiation.rounds` | `gen_ai.agent.a2at.negotiation.rounds` | openan | Histogram ({round}) | Negotiation-T round-count distribution of a single negotiation | `negotiation.id` | string | Negotiation process identifier | Optional | Round distribution per negotiation process |
 | | | | | | `negotiation.result` | string | Conventional `accepted` / `rejected`, etc. | Optional | Round distribution per negotiation result |
 | `negotiation.count` | `gen_ai.agent.a2at.negotiation.count` | openan | Counter | Negotiation-T cumulative negotiation count | `negotiation.result` | string | Conventional `accepted` / `rejected`, etc. | Optional | Negotiation count per result |
 | `notification.count` | `gen_ai.agent.a2at.notification.count` | openan | Counter | Notification-T cumulative notification count | `notification.topic` | string | Low-cardinality notification topic | Optional | Notification count per topic |
+| | | | | | `notification.result` | string | Conventional `sent` / `failed` | Optional | Notification delivery success rate |
 | `authorization.preauthorize.count` | `gen_ai.agent.a2at.authorization.preauthorize.count` | openan | Counter | Authorization-T cumulative pre-authorization count | `authorization.policy.operation.type` | string | Low-cardinality policy operation type | Optional | Pre-authorization count per policy operation type |
+| | | | | | `authorization.result` | string | Conventional `allowed` / `denied` (`error` for failed execution) | Optional | Pre-authorization pass rate |
 | `authorization.preauthorize.duration` | `gen_ai.agent.a2at.authorization.preauthorize.duration` | openan | Histogram (ms) | Authorization-T pre-authorization duration distribution | `authorization.policy.operation.type` | string | Low-cardinality policy operation type | Optional | Pre-authorization duration per policy operation type |
+| | | | | | `authorization.result` | string | Conventional `allowed` / `denied` (`error` for failed execution) | Optional | Pre-authorization duration per decision result |
 | `authorization.execute.count` | `gen_ai.agent.a2at.authorization.execute.count` | openan | Counter | Authorization-T cumulative authorization-execution count | `authorization.policy.operation.type` | string | Low-cardinality policy operation type | Optional | Authorization execution count per policy operation type |
+| | | | | | `authorization.result` | string | Conventional `allowed` / `denied` (`error` for failed execution) | Optional | Authorization execution pass rate |
 
 ### Trace
 

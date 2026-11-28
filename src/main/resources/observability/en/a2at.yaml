@@ -32,6 +32,7 @@ attributes:
   extension.name: {otel_name: gen_ai.agent.a2at.extension.name, type: string, values: [task-t, negotiation-t, notification-t, authorization-t], value_range: 'task-t / negotiation-t / notification-t / authorization-t (enum-enforced)', description: 'A2A-T extension name, enum-enforced; acts as the branch field that selects the extension attribute whitelist'}
   task.type: {otel_name: gen_ai.agent.a2at.task.type, type: string, value_range: 'Low-cardinality task type (e.g. diagnosis), non-blank under Task-T', description: 'Task type, low cardinality (e.g. diagnosis)'}
   task.object: {otel_name: gen_ai.agent.a2at.task.object, type: string, value_range: 'Free string', description: 'Task object or goal'}
+  task.status: {otel_name: gen_ai.agent.a2at.task.status, type: string, value_range: 'Conventional completed/failed/cancelled', description: 'Task terminal state, used to compute the task success rate'}
   negotiation.id: {otel_name: gen_ai.agent.a2at.negotiation.id, type: string, value_range: 'Free string', description: 'Negotiation process identifier'}
   negotiation.round: {otel_name: gen_ai.agent.a2at.negotiation.round, type: integer, value_range: 'Positive integer', description: 'Current negotiation round, positive integer'}
   negotiation.total_rounds: {otel_name: gen_ai.agent.a2at.negotiation.total_rounds, type: integer, value_range: 'Positive integer', description: 'Actual total negotiation rounds, positive integer'}
@@ -39,9 +40,11 @@ attributes:
   negotiation.result: {otel_name: gen_ai.agent.a2at.negotiation.result, type: string, value_range: 'Conventional accepted/rejected, etc.', description: 'Negotiation result (conventional accepted/rejected, etc.)'}
   negotiation.performative: {otel_name: gen_ai.agent.a2at.negotiation.performative, type: string, value_range: 'E.g. propose/accept/reject', description: 'Negotiation speech act (e.g. propose/accept/reject)'}
   notification.topic: {otel_name: gen_ai.agent.a2at.notification.topic, type: string, value_range: 'Low-cardinality notification topic', description: 'Notification topic, low cardinality'}
+  notification.result: {otel_name: gen_ai.agent.a2at.notification.result, type: string, value_range: 'Conventional sent/failed', description: 'Notification delivery result, used to compute the notification success rate'}
   push.notification.url: {otel_name: gen_ai.agent.a2at.push.notification.url, type: string, value_range: 'URL string, redacted before recording', description: 'Push notification callback URL, redacted before recording'}
   authorization.stage: {otel_name: gen_ai.agent.a2at.authorization.stage, type: string, value_range: 'E.g. preauthorize/execute/manual-review', description: 'Authorization stage (e.g. preauthorize/execute/manual-review)'}
   authorization.policy.operation.type: {otel_name: gen_ai.agent.a2at.authorization.policy.operation.type, type: string, value_range: 'Low-cardinality policy operation type', description: 'Authorization policy operation type, low cardinality'}
+  authorization.result: {otel_name: gen_ai.agent.a2at.authorization.result, type: string, value_range: 'Conventional allowed/denied; record error for failed execution', description: 'Authorization decision result, used to compute the authorization pass rate'}
 
 metrics:
   gen_ai.client.operation.duration:
@@ -75,7 +78,7 @@ metrics:
     unit: ms
     extension: task-t
     attributes:
-      allowed: [task.type, task.object]
+      allowed: [task.type, task.object, task.status]
       required: [task.type]
   task.count:
     otel_name: gen_ai.agent.a2at.task.count
@@ -86,7 +89,7 @@ metrics:
     unit: ''
     extension: task-t
     attributes:
-      allowed: [task.type, task.object]
+      allowed: [task.type, task.object, task.status]
       required: [task.type]
   negotiation.rounds:
     otel_name: gen_ai.agent.a2at.negotiation.rounds
@@ -119,7 +122,7 @@ metrics:
     unit: ''
     extension: notification-t
     attributes:
-      allowed: [notification.topic]
+      allowed: [notification.topic, notification.result]
       required: []
   authorization.preauthorize.count:
     otel_name: gen_ai.agent.a2at.authorization.preauthorize.count
@@ -130,7 +133,7 @@ metrics:
     unit: ''
     extension: authorization-t
     attributes:
-      allowed: [authorization.policy.operation.type]
+      allowed: [authorization.policy.operation.type, authorization.result]
       required: []
   authorization.preauthorize.duration:
     otel_name: gen_ai.agent.a2at.authorization.preauthorize.duration
@@ -141,7 +144,7 @@ metrics:
     unit: ms
     extension: authorization-t
     attributes:
-      allowed: [authorization.policy.operation.type]
+      allowed: [authorization.policy.operation.type, authorization.result]
       required: []
   authorization.execute.count:
     otel_name: gen_ai.agent.a2at.authorization.execute.count
@@ -152,7 +155,7 @@ metrics:
     unit: ''
     extension: authorization-t
     attributes:
-      allowed: [authorization.policy.operation.type]
+      allowed: [authorization.policy.operation.type, authorization.result]
       required: []
 
 traces:

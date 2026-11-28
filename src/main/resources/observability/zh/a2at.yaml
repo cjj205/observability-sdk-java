@@ -32,6 +32,7 @@ attributes:
   extension.name: {otel_name: gen_ai.agent.a2at.extension.name, type: string, values: [task-t, negotiation-t, notification-t, authorization-t], value_range: 'task-t / negotiation-t / notification-t / authorization-t（枚举强约束）', description: 'A2A-T 扩展名称，枚举强约束，作为分支字段选择扩展属性白名单'}
   task.type: {otel_name: gen_ai.agent.a2at.task.type, type: string, value_range: '低基数任务类型（如 diagnosis），Task-T 下非空', description: '任务类型，低基数（如 diagnosis）'}
   task.object: {otel_name: gen_ai.agent.a2at.task.object, type: string, value_range: '自由字符串', description: '任务对象或目标'}
+  task.status: {otel_name: gen_ai.agent.a2at.task.status, type: string, value_range: '约定 completed/failed/cancelled', description: '任务终态，用于统计任务成功率'}
   negotiation.id: {otel_name: gen_ai.agent.a2at.negotiation.id, type: string, value_range: '自由字符串', description: '协商流程标识'}
   negotiation.round: {otel_name: gen_ai.agent.a2at.negotiation.round, type: integer, value_range: '正整数', description: '当前协商轮次，正整数'}
   negotiation.total_rounds: {otel_name: gen_ai.agent.a2at.negotiation.total_rounds, type: integer, value_range: '正整数', description: '协商实际总轮次，正整数'}
@@ -39,9 +40,11 @@ attributes:
   negotiation.result: {otel_name: gen_ai.agent.a2at.negotiation.result, type: string, value_range: '约定 accepted/rejected 等', description: '协商结果（约定 accepted/rejected 等）'}
   negotiation.performative: {otel_name: gen_ai.agent.a2at.negotiation.performative, type: string, value_range: '如 propose/accept/reject', description: '协商言语行为（如 propose/accept/reject）'}
   notification.topic: {otel_name: gen_ai.agent.a2at.notification.topic, type: string, value_range: '低基数通知主题', description: '通知主题，低基数'}
+  notification.result: {otel_name: gen_ai.agent.a2at.notification.result, type: string, value_range: '约定 sent/failed', description: '通知送达结果，用于统计通知成功率'}
   push.notification.url: {otel_name: gen_ai.agent.a2at.push.notification.url, type: string, value_range: 'URL 字符串，记录前脱敏', description: '推送通知回调地址，记录前脱敏'}
   authorization.stage: {otel_name: gen_ai.agent.a2at.authorization.stage, type: string, value_range: '如 preauthorize/execute/manual-review', description: '授权阶段（如 preauthorize/execute/manual-review）'}
   authorization.policy.operation.type: {otel_name: gen_ai.agent.a2at.authorization.policy.operation.type, type: string, value_range: '低基数策略操作类型', description: '授权策略操作类型，低基数'}
+  authorization.result: {otel_name: gen_ai.agent.a2at.authorization.result, type: string, value_range: '约定 allowed/denied，执行失败记 error', description: '授权决策结果，用于统计授权通过率'}
 
 metrics:
   gen_ai.client.operation.duration:
@@ -75,7 +78,7 @@ metrics:
     unit: ms
     extension: task-t
     attributes:
-      allowed: [task.type, task.object]
+      allowed: [task.type, task.object, task.status]
       required: [task.type]
   task.count:
     otel_name: gen_ai.agent.a2at.task.count
@@ -86,7 +89,7 @@ metrics:
     unit: ''
     extension: task-t
     attributes:
-      allowed: [task.type, task.object]
+      allowed: [task.type, task.object, task.status]
       required: [task.type]
   negotiation.rounds:
     otel_name: gen_ai.agent.a2at.negotiation.rounds
@@ -119,7 +122,7 @@ metrics:
     unit: ''
     extension: notification-t
     attributes:
-      allowed: [notification.topic]
+      allowed: [notification.topic, notification.result]
       required: []
   authorization.preauthorize.count:
     otel_name: gen_ai.agent.a2at.authorization.preauthorize.count
@@ -130,7 +133,7 @@ metrics:
     unit: ''
     extension: authorization-t
     attributes:
-      allowed: [authorization.policy.operation.type]
+      allowed: [authorization.policy.operation.type, authorization.result]
       required: []
   authorization.preauthorize.duration:
     otel_name: gen_ai.agent.a2at.authorization.preauthorize.duration
@@ -141,7 +144,7 @@ metrics:
     unit: ms
     extension: authorization-t
     attributes:
-      allowed: [authorization.policy.operation.type]
+      allowed: [authorization.policy.operation.type, authorization.result]
       required: []
   authorization.execute.count:
     otel_name: gen_ai.agent.a2at.authorization.execute.count
@@ -152,7 +155,7 @@ metrics:
     unit: ''
     extension: authorization-t
     attributes:
-      allowed: [authorization.policy.operation.type]
+      allowed: [authorization.policy.operation.type, authorization.result]
       required: []
 
 traces:
