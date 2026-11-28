@@ -87,15 +87,24 @@ class ObservabilityTest {
         var points = metric("task.duration").getHistogramData().getPoints();
         assertEquals(1, points.size());
         assertEquals("incident", points.iterator().next().getAttributes().get(AttributeKey.stringKey(Definitions.PREFIX + "task.object")));
+        observe.metric("gen_ai.client.inference.usage.input_tokens", 10, Map.of(
+            "gen_ai.operation.name", "chat", "gen_ai.provider.name", "openai", "gen_ai.token.modality", "text"));
+        observe.metric("gen_ai.client.inference.usage.input_tokens", 20, Map.of(
+            "gen_ai.operation.name", "chat", "gen_ai.provider.name", "openai", "gen_ai.token.modality", "text",
+            "gen_ai.agent.name", "diagnosis-agent", "gen_ai.request.model", "model-1"));
+        observe.metric("gen_ai.client.inference.usage.input_tokens", 30, Map.of(
+            "gen_ai.operation.name", "chat", "gen_ai.provider.name", "openai", "gen_ai.token.modality", "text", "workflow.type", "fault-diagnosis"));
+        var tokenPoints = metric("gen_ai.client.inference.usage.input_tokens").getLongSumData().getPoints();
+        assertEquals(2, tokenPoints.size());
     }
     @Test void yamlDefinesAttributeTypesNamesAndExtensionValues() {
         var extension = Definitions.attribute("extension.name");
         assertEquals("gen_ai.agent.a2at.extension.name", extension.name());
         assertEquals(Definitions.AttributeType.STRING, extension.type());
         assertEquals(Set.of("task-t", "negotiation-t", "notification-t", "authorization-t"), extension.values());
-        var stepIndex = Definitions.attribute("workflow.step.index");
-        assertEquals(Definitions.AttributeType.INTEGER, stepIndex.type());
-        assertEquals("gen_ai.agent.a2at.workflow.step.index", stepIndex.name());
+        var stepId = Definitions.attribute("workflow.step.id");
+        assertEquals(Definitions.AttributeType.STRING, stepId.type());
+        assertEquals("gen_ai.agent.a2at.workflow.step.id", stepId.name());
         assertEquals(Definitions.AttributeType.STRING_ARRAY, Definitions.attribute("agent.skills").type());
         assertTrue(Definitions.attribute("workflow.status").values().isEmpty());
         assertEquals("gen_ai.agent.a2a.operation.name", Definitions.attribute("operation.name").name());
@@ -122,7 +131,6 @@ class ObservabilityTest {
             case "negotiation.result" -> "accept";
             case "workflow.status" -> "completed";
             case "workflow.step.status" -> "done";
-            case "gen_ai.token.type" -> "input";
             default -> "test";
         };
     }
@@ -148,18 +156,19 @@ class ObservabilityTest {
         assertFalse(AttributesConverter.clean("Authorization: Bearer abc123").contains("abc123"));
         assertFalse(AttributesConverter.clean("{\"token\":\"abc123\"}").contains("abc123"));
         assertThrows(IllegalArgumentException.class, () -> AttributesConverter.convert(Map.of("unknown", "x"), 'S', null));
+        assertThrows(IllegalArgumentException.class, () -> AttributesConverter.convert(Map.of("task_id", "task-1"), 'M', null));
         assertEquals("x", AttributesConverter.convert(Map.of("task.object", "x"), 'M', Set.of("task.object"))
             .get(AttributeKey.stringKey(Definitions.PREFIX + "task.object")));
     }
     @Test void acceptsCustomValuesForNonExtensionAttributes() {
         var metrics = AttributesConverter.convert(Map.of(
             "negotiation.result", "counter-offer", "workflow.status", "paused",
-            "agent.state", "draining", "gen_ai.token.type", "cached"), 'M', null);
+            "agent.state", "draining", "gen_ai.token.modality", "cached"), 'M', null);
         var logs = AttributesConverter.convert(Map.of("authorization.stage", "manual-review", "substep.status", "waiting"), 'L', null);
         assertEquals("counter-offer", metrics.get(AttributeKey.stringKey(Definitions.PREFIX + "negotiation.result")));
         assertEquals("paused", metrics.get(AttributeKey.stringKey(Definitions.PREFIX + "workflow.status")));
         assertEquals("draining", metrics.get(AttributeKey.stringKey(Definitions.PREFIX + "agent.state")));
-        assertEquals("cached", metrics.get(AttributeKey.stringKey("gen_ai.token.type")));
+        assertEquals("cached", metrics.get(AttributeKey.stringKey("gen_ai.token.modality")));
         assertEquals("manual-review", logs.get(AttributeKey.stringKey(Definitions.PREFIX + "authorization.stage")));
         assertEquals("waiting", logs.get(AttributeKey.stringKey(Definitions.PREFIX + "substep.status")));
     }

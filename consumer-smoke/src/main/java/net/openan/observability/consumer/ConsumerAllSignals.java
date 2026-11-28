@@ -113,7 +113,7 @@ public final class ConsumerAllSignals {
                             "workflow.step.owner_agent", "consumer-agent"), stepSpan);
                         emitAgentSignals(observe, runId, stepName, substepDuration, stepSpan, agentWork);
                         observe.metric("step.duration", stepDuration, Map.of(
-                            "workflow.step", stepName, "gen_ai.agent.name", "consumer-agent"));
+                            "workflow.step.status", "completed".equals(workflowStatus) ? "success" : "failed", "gen_ai.agent.name", "consumer-agent"));
                         observe.log("gen_ai.agent.a2at.step", LogSeverity.INFO, "Workflow step " + workflowStatus, step, stepSpan);
                         stepSpan.ok();
                     }
@@ -204,11 +204,13 @@ public final class ConsumerAllSignals {
                     "workflow.step", stepName, "workflow.step.index", 1), span);
                 agentWork.accept(span);
                 observe.metric("substep.duration", substepDuration, Map.of(
-                    "gen_ai.agent.name", "consumer-agent", "substep.name", "analyze"));
-                observe.metric("gen_ai.client.token.usage", 680, Map.of(
-                    "gen_ai.agent.name", "consumer-agent", "gen_ai.request.model", "model-1", "gen_ai.token.type", "input"));
-                observe.metric("gen_ai.client.token.usage", 190, Map.of(
-                    "gen_ai.agent.name", "consumer-agent", "gen_ai.request.model", "model-1", "gen_ai.token.type", "output"));
+                    "substep.status", "success", "gen_ai.agent.name", "consumer-agent"));
+                observe.metric("gen_ai.client.inference.usage.input_tokens", 680, Map.of(
+                    "gen_ai.operation.name", "chat", "gen_ai.provider.name", "openai", "gen_ai.token.modality", "text",
+                    "gen_ai.agent.name", "consumer-agent", "gen_ai.request.model", "model-1"));
+                observe.metric("gen_ai.client.inference.usage.output_tokens", 190, Map.of(
+                    "gen_ai.operation.name", "chat", "gen_ai.provider.name", "openai", "gen_ai.token.modality", "text",
+                    "gen_ai.agent.name", "consumer-agent", "gen_ai.request.model", "model-1"));
                 observe.log("gen_ai.agent.a2at.substep", LogSeverity.INFO, "Agent substep completed", Map.of(
                     "gen_ai.agent.name", "consumer-agent", "substep.name", "analyze", "substep.status", "completed",
                     "workflow.step", stepName, "workflow.step.index", 1), span);
