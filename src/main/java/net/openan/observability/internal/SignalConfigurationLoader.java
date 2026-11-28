@@ -30,7 +30,7 @@ import org.yaml.snakeyaml.constructor.SafeConstructor;
 
 /** Loads the versioned, bundled signal configuration. */
 final class SignalConfigurationLoader {
-    private static final List<String> RESOURCES = List.of("observability/a2at.yaml", "observability/agent.yaml", "observability/workflow.yaml");
+    private static final List<String> RESOURCES = List.of("observability/zh/a2at.yaml", "observability/zh/agent.yaml", "observability/zh/workflow.yaml");
 
     static Catalog load() {
         Map<String, Definitions.Metric> metrics = new LinkedHashMap<>();

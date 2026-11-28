@@ -143,7 +143,7 @@ Marker inheritance is supported. For example, a Marker that has `A2A_OBSERVABILI
 | `gen_ai.agent.a2at.step` | `workflow.step.name`, `workflow.step.id`, `workflow.step.status` | `workflow.step.owner_agent` |
 | `gen_ai.agent.a2at.message` | `extension.name`; Task-T also requires `task.type` | Attributes permitted by the selected A2A-T extension |
 
-For the message signal, `extension.name` must be one of `task-t`, `negotiation-t`, `notification-t`, or `authorization-t`. The selected value determines the allowed MDC attribute names. See [`a2at.yaml`](../src/main/resources/observability/a2at.yaml) for the complete list and [`agent.yaml`](../src/main/resources/observability/agent.yaml) and [`workflow.yaml`](../src/main/resources/observability/workflow.yaml) for Agent and Workflow definitions.
+For the message signal, `extension.name` must be one of `task-t`, `negotiation-t`, `notification-t`, or `authorization-t`. The selected value determines the allowed MDC attribute names. See [`a2at.yaml`](../src/main/resources/observability/en/a2at.yaml) for the complete list and [`agent.yaml`](../src/main/resources/observability/en/agent.yaml) and [`workflow.yaml`](../src/main/resources/observability/en/workflow.yaml) for Agent and Workflow definitions.
 
 Values copied from MDC are strings. This is suitable for string attributes, but it cannot supply integer attributes such as `negotiation.round`, nor string-array attributes such as `agent.skills`. For signals requiring those values, call `sdk.observe().log(...)` directly with typed values instead of routing that event through the bridge.
 

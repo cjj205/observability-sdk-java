@@ -167,13 +167,13 @@ See the [API Reference](api-reference.md#sdkconfig-and-sdkconfigbuilder) for end
 
 ## 6. Signal definitions and validation
 
-Three definitions are packaged in the JAR:
+Three definitions are packaged in the JAR under `observability/zh/` and loaded by the SDK; English reference copies of the same definitions live under `observability/en/`:
 
 | File | Coverage |
 |---|---|
-| `src/main/resources/observability/a2at.yaml` | A2A and four A2A-T extensions |
-| `src/main/resources/observability/workflow.yaml` | Workflow and step |
-| `src/main/resources/observability/agent.yaml` | Agent, substep, and token usage |
+| `src/main/resources/observability/zh/a2at.yaml` | A2A and four A2A-T extensions |
+| `src/main/resources/observability/zh/workflow.yaml` | Workflow and step |
+| `src/main/resources/observability/zh/agent.yaml` | Agent, substep, and token usage |
 
 Each YAML file declares its `version`, attribute types and OpenTelemetry names, trace/log allowlists and required attributes, and metric types and dimensions. At runtime, the SDK:
 

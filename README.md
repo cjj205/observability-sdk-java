@@ -16,9 +16,9 @@ Application code ──> Observability SDK ──> OpenTelemetry SDK ──OTLP�
 
 | Category | Traces | Metrics | Logs | Definition |
 |---|---|---|---|---|
-| A2A / A2A-T | A2A messages, tasks, and streaming calls; four A2A-T extensions | 2 A2A metrics and 8 A2A-T metrics | `gen_ai.agent.a2at.message` | [`a2at.yaml`](src/main/resources/observability/a2at.yaml) |
-| Workflow | `a2at.workflow`, `a2at.step.<name>` | `workflow.duration`, `workflow.count`, `step.duration`, `step.count` | Workflow and step events | [`workflow.yaml`](src/main/resources/observability/workflow.yaml) |
-| Agent | `a2at.substep.<name>` | `substep.duration`, `substep.count`, `gen_ai.client.inference.usage.input_tokens` / `output_tokens` | Agent lifecycle and substep events | [`agent.yaml`](src/main/resources/observability/agent.yaml) |
+| A2A / A2A-T | A2A messages, tasks, and streaming calls; four A2A-T extensions | 2 A2A metrics and 8 A2A-T metrics | `gen_ai.agent.a2at.message` | [`a2at.yaml`](src/main/resources/observability/en/a2at.yaml) |
+| Workflow | `a2at.workflow`, `a2at.step.<name>` | `workflow.duration`, `workflow.count`, `step.duration`, `step.count` | Workflow and step events | [`workflow.yaml`](src/main/resources/observability/en/workflow.yaml) |
+| Agent | `a2at.substep.<name>` | `substep.duration`, `substep.count`, `gen_ai.client.inference.usage.input_tokens` / `output_tokens` | Agent lifecycle and substep events | [`agent.yaml`](src/main/resources/observability/en/agent.yaml) |
 
 Each YAML file defines its version, attribute types, signal names, metric dimensions, and required attributes. Update the applicable YAML file and increment its `version` when the signal definition changes. The SDK validates signal names and attribute allowlists before export.
 

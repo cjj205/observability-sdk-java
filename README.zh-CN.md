@@ -16,9 +16,9 @@
 
 | 分类 | Trace | Metric | Log | 定义文件 |
 |---|---|---|---|---|
-| A2A / A2A-T | A2A 消息、任务和流式调用；四种 A2A-T 扩展 | 2 项 A2A 指标、8 项 A2A-T 指标 | `gen_ai.agent.a2at.message` | [`a2at.yaml`](src/main/resources/observability/a2at.yaml) |
-| Workflow | `a2at.workflow`、`a2at.step.<name>` | `workflow.duration`、`workflow.count`、`step.duration`、`step.count` | Workflow 与 Step 事件 | [`workflow.yaml`](src/main/resources/observability/workflow.yaml) |
-| Agent | `a2at.substep.<name>` | `substep.duration`、`substep.count`、`gen_ai.client.inference.usage.input_tokens` / `output_tokens` | Agent 生命周期与 Substep 事件 | [`agent.yaml`](src/main/resources/observability/agent.yaml) |
+| A2A / A2A-T | A2A 消息、任务和流式调用；四种 A2A-T 扩展 | 2 项 A2A 指标、8 项 A2A-T 指标 | `gen_ai.agent.a2at.message` | [`a2at.yaml`](src/main/resources/observability/zh/a2at.yaml) |
+| Workflow | `a2at.workflow`、`a2at.step.<name>` | `workflow.duration`、`workflow.count`、`step.duration`、`step.count` | Workflow 与 Step 事件 | [`workflow.yaml`](src/main/resources/observability/zh/workflow.yaml) |
+| Agent | `a2at.substep.<name>` | `substep.duration`、`substep.count`、`gen_ai.client.inference.usage.input_tokens` / `output_tokens` | Agent 生命周期与 Substep 事件 | [`agent.yaml`](src/main/resources/observability/zh/agent.yaml) |
 
 三份 YAML 均包含版本、属性类型、信号名称、指标维度和必填属性。调整标准时修改对应 YAML 并递增 `version`；SDK 在导出前按信号名称和属性白名单校验输入。
 
